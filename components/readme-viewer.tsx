@@ -1,130 +1,21 @@
-"use client"
-
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Download, Copy, Check } from "lucide-react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useToast } from "@/components/ui/use-toast"
-
-interface ReadmeViewerProps {
-  readme: string
-  repoName: string
-  repoOwner?: string
-  repoBranch?: string
-}
-
-export function ReadmeViewer({ readme, repoName, repoOwner = "", repoBranch = "main" }: ReadmeViewerProps) {
-  const { toast } = useToast()
-  const [copied, setCopied] = useState(false)
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(readme)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-
-    toast({
-      title: "Copied to clipboard",
-      description: "README content has been copied to your clipboard",
-    })
-  }
-
-  const handleDownload = () => {
-    const blob = new Blob([readme], { type: "text/markdown" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `README-${repoName}.md`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-
-    toast({
-      title: "Downloaded",
-      description: `README-${repoName}.md has been downloaded`,
-    })
-  }
-
-  // Process GitHub-style links if repo info is provided
-  const processedReadme = repoOwner 
-    ? processGitHubLinks(readme, repoOwner, repoName, repoBranch) 
-    : readme
-
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Generated README</CardTitle>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleCopy}>
-            {copied ? (
-              <>
-                <Check className="mr-2 h-4 w-4" />
-                Copied
-              </>
-            ) : (
-              <>
-                <Copy className="mr-2 h-4 w-4" />
-                Copy
-              </>
-            )}
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleDownload}>
-            <Download className="mr-2 h-4 w-4" />
-            Download
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="preview">
-          <TabsList className="mb-4">
-            <TabsTrigger value="preview">Preview</TabsTrigger>
-            <TabsTrigger value="raw">Raw Markdown</TabsTrigger>
-          </TabsList>
-          <TabsContent value="preview">
-            <div className="prose dark:prose-invert max-w-none border rounded-md p-4 bg-card markdown-body">
-              <div dangerouslySetInnerHTML={{ __html: markdownToHtml(processedReadme) }} />
-            </div>
-          </TabsContent>
-          <TabsContent value="raw">
-            <pre className="border rounded-md p-4 overflow-auto bg-muted text-sm">{processedReadme}</pre>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
-  )
-}
-
-// Helper to process GitHub-style relative links
-function processGitHubLinks(markdown: string, owner: string, repo: string, branch: string): string {
-  return markdown
-    // Handle image links that start with ./
-    .replace(/!\[([^\]]+)\]\(\.\/(.*?)\)/g, 
-      `![$1](https://github.com/${owner}/${repo}/raw/${branch}/$2)`)
-    // Handle relative links to files
-    .replace(/\[([^\]]+)\]\(\.\/(.*?)\)/g, 
-      `[$1](https://github.com/${owner}/${repo}/blob/${branch}/$2)`)
-    // Keep anchor links as-is
-    .replace(/\[([^\]]+)\]\(#(.*?)\)/g, `[$1](#$2)`);
-}
-
-// Simplified and more robust markdown to HTML converter
 function markdownToHtml(markdown: string): string {
-  // Step 1: Extract and store code blocks to protect them from processing
+  // Store code blocks and inline code to prevent processing their contents
   const codeBlocks: string[] = [];
+  const inlineCodes: string[] = [];
+  
+  // Step 1: Extract code blocks with language specification
   markdown = markdown.replace(/```([a-z]*)\n([\s\S]*?)```/g, (match, language, code) => {
     const index = codeBlocks.length;
     const langClass = language ? ` class="language-${language}"` : '';
     codeBlocks.push(`<pre><code${langClass}>${escapeHtml(code.trim())}</code></pre>`);
-    return `__CODE_BLOCK_${index}__`;
+    return `{{CODE_BLOCK_${index}}}`;  // Use a different placeholder format
   });
 
-  // Step 2: Extract and store inline code
-  const inlineCodes: string[] = [];
+  // Step 2: Extract inline code
   markdown = markdown.replace(/`([^`]+)`/g, (match, code) => {
     const index = inlineCodes.length;
     inlineCodes.push(`<code>${escapeHtml(code)}</code>`);
-    return `__INLINE_CODE_${index}__`;
+    return `{{INLINE_CODE_${index}}}`;  // Use a different placeholder format
   });
 
   // Step 3: Process headers
@@ -143,10 +34,10 @@ function markdownToHtml(markdown: string): string {
     .replace(/\*(.*?)\*/g, "<em>$1</em>")
     .replace(/_(.*?)_/g, "<em>$1</em>");
 
-  // Step 5: Handle badges (shields.io images) with special class
+  // Step 5: Handle badges with special styling
   markdown = markdown.replace(
     /!\[([^\]]*)\]\((https:\/\/img\.shields\.io\/[^)]+)\)/g,
-    '<img src="$2" alt="$1" class="inline-badge" />'
+    '<img src="$2" alt="$1" class="inline-badge" style="display:inline-block;vertical-align:middle;margin:0 4px 0 0;" />'
   );
 
   // Step 6: Handle other images
@@ -161,119 +52,108 @@ function markdownToHtml(markdown: string): string {
   // Step 8: Handle horizontal rules
   markdown = markdown.replace(/^(-{3,}|_{3,}|\*{3,})$/gm, "<hr>");
 
-  // Step 9: Handle lists in a safer way
-  // First, identify list blocks
-  const listBlocks: string[] = [];
-  markdown = markdown.replace(
-    /(?:^|\n)((?:[ \t]*(?:[-*+]|\d+\.)[ \t]+.+\n)+)/g,
-    (match, listContent) => {
-      const index = listBlocks.length;
-      listBlocks.push(listContent);
-      return `\n__LIST_BLOCK_${index}__\n`;
-    }
-  );
-
-  // Process each list block
-  listBlocks.forEach((block, index) => {
-    const lines = block.split("\n").filter(line => line.trim());
-    const isOrdered = /^\s*\d+\./.test(lines[0]);
-    
-    const listItems = lines.map(line => {
-      // Extract the content after list marker
-      const content = line.replace(/^\s*(?:[-*+]|\d+\.)[ \t]+/, "");
-      return `<li>${content}</li>`;
-    }).join("");
-    
-    const listType = isOrdered ? "ol" : "ul";
-    listBlocks[index] = `<${listType}>${listItems}</${listType}>`;
-  });
-
-  // Replace list blocks back
-  listBlocks.forEach((html, index) => {
-    markdown = markdown.replace(`__LIST_BLOCK_${index}__`, html);
-  });
-
-  // Step 10: Handle blockquotes
-  markdown = markdown.replace(/^>[ \t]?(.*$)/gm, "<blockquote>$1</blockquote>");
-  markdown = markdown.replace(/<\/blockquote>\s*<blockquote>/g, "<br>");
-
-  // Step 11: Process tables in a safer way
-  // Identify table blocks
-  const tableBlocks: string[] = [];
-  markdown = markdown.replace(
-    /(?:^\|.+\|\n)+(?:\|[ :-]+\|\n)(?:\|.+\|\n)+/gm,
-    (tableContent) => {
-      const index = tableBlocks.length;
-      tableBlocks.push(tableContent);
-      return `__TABLE_BLOCK_${index}__`;
-    }
-  );
-
-  // Process each table block
-  tableBlocks.forEach((block, index) => {
-    const rows = block.trim().split("\n");
-    let tableHTML = "<table>";
-    
-    // Check if there's a header row
-    if (rows.length >= 2 && rows[1].includes("|-")) {
-      // Add header row
-      tableHTML += "<thead><tr>";
-      rows[0].split("|").filter(cell => cell.trim() !== "").forEach(cell => {
-        tableHTML += `<th>${cell.trim()}</th>`;
-      });
-      tableHTML += "</tr></thead>";
-      
-      // Add body rows (skip header and separator rows)
-      tableHTML += "<tbody>";
-      for (let i = 2; i < rows.length; i++) {
-        tableHTML += "<tr>";
-        rows[i].split("|").filter(cell => cell.trim() !== "").forEach(cell => {
-          tableHTML += `<td>${cell.trim()}</td>`;
-        });
-        tableHTML += "</tr>";
+  // Step 9: Handle lists
+  // Convert list items first
+  markdown = markdown.replace(/^\s*[-*+]\s+(.*$)/gm, "<li>$1</li>");
+  markdown = markdown.replace(/^\s*\d+\.\s+(.*$)/gm, "<li>$1</li>");
+  
+  // Process lists by identifying consecutive list items
+  let lines = markdown.split("\n");
+  let result = [];
+  let inList = false;
+  let listItems = [];
+  let isOrdered = false;
+  
+  lines.forEach((line, i) => {
+    if (line.startsWith("<li>")) {
+      if (!inList) {
+        inList = true;
+        isOrdered = i > 0 && /^\s*\d+\./.test(lines[i-1]);
+        listItems = [];
       }
-      tableHTML += "</tbody>";
+      listItems.push(line);
     } else {
-      // No header row, treat all rows as body
-      tableHTML += "<tbody>";
-      rows.forEach(row => {
-        tableHTML += "<tr>";
-        row.split("|").filter(cell => cell.trim() !== "").forEach(cell => {
-          tableHTML += `<td>${cell.trim()}</td>`;
-        });
-        tableHTML += "</tr>";
-      });
-      tableHTML += "</tbody>";
+      if (inList) {
+        const listType = isOrdered ? "ol" : "ul";
+        result.push(`<${listType}>${listItems.join("")}</${listType}>`);
+        inList = false;
+      }
+      result.push(line);
     }
-    
-    tableHTML += "</table>";
-    tableBlocks[index] = tableHTML;
-  });
-
-  // Replace table blocks back
-  tableBlocks.forEach((html, index) => {
-    markdown = markdown.replace(`__TABLE_BLOCK_${index}__`, html);
-  });
-
-  // Step 12: Handle paragraphs
-  // Split by double newlines and process each chunk
-  const chunks = markdown.split(/\n\n+/);
-  markdown = chunks.map(chunk => {
-    chunk = chunk.trim();
-    if (chunk && !chunk.startsWith("<")) {
-      return `<p>${chunk}</p>`;
-    }
-    return chunk;
-  }).join("\n\n");
-
-  // Step 13: Restore code blocks and inline code
-  codeBlocks.forEach((html, index) => {
-    markdown = markdown.replace(`__CODE_BLOCK_${index}__`, html);
   });
   
-  inlineCodes.forEach((html, index) => {
-    markdown = markdown.replace(`__INLINE_CODE_${index}__`, html);
-  });
+  // Handle trailing list
+  if (inList) {
+    const listType = isOrdered ? "ol" : "ul";
+    result.push(`<${listType}>${listItems.join("")}</${listType}>`);
+  }
+  
+  markdown = result.join("\n");
+
+  // Step 10: Handle blockquotes
+  markdown = markdown.replace(/^>\s(.*)$/gm, "<blockquote>$1</blockquote>");
+  markdown = markdown.replace(/<\/blockquote>\n<blockquote>/g, "<br>");
+
+  // Step 11: Process tables (simplified)
+  // This regex identifies table rows
+  let tableRows = markdown.match(/^\|(.+)\|$/gm);
+  if (tableRows) {
+    let tableHtml = "<table>";
+    let isHeader = true;
+    let headerProcessed = false;
+    
+    for (let i = 0; i < tableRows.length; i++) {
+      const row = tableRows[i];
+      
+      // Skip separator row
+      if (row.match(/^\|\s*[-:]+\s*\|/)) {
+        headerProcessed = true;
+        continue;
+      }
+      
+      // Process cells
+      const cells = row.split("|").filter(cell => cell !== "").map(cell => cell.trim());
+      
+      if (isHeader && !headerProcessed) {
+        tableHtml += "<thead><tr>";
+        cells.forEach(cell => {
+          tableHtml += `<th>${cell}</th>`;
+        });
+        tableHtml += "</tr></thead><tbody>";
+        isHeader = false;
+      } else {
+        tableHtml += "<tr>";
+        cells.forEach(cell => {
+          tableHtml += `<td>${cell}</td>`;
+        });
+        tableHtml += "</tr>";
+      }
+    }
+    
+    tableHtml += "</tbody></table>";
+    
+    // Replace table in markdown
+    markdown = markdown.replace(/(\|.+\|\n)+/g, tableHtml);
+  }
+
+  // Step 12: Handle paragraphs (text not already in HTML)
+  const paragraphs = markdown.split(/\n\n+/);
+  markdown = paragraphs.map(p => {
+    p = p.trim();
+    if (p && !p.startsWith("<")) {
+      return `<p>${p}</p>`;
+    }
+    return p;
+  }).join("\n\n");
+
+  // Step 13: Restore code blocks and inline code with the correct placeholders
+  for (let i = 0; i < codeBlocks.length; i++) {
+    markdown = markdown.replace(`{{CODE_BLOCK_${i}}}`, codeBlocks[i]);
+  }
+  
+  for (let i = 0; i < inlineCodes.length; i++) {
+    markdown = markdown.replace(`{{INLINE_CODE_${i}}}`, inlineCodes[i]);
+  }
 
   return markdown;
 }
