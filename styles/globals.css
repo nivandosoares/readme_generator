@@ -71,6 +71,39 @@ body {
   font-weight: 600;
 }
 
+/* Light mode styles */
+.prose code {
+  background-color: #f6f8fa;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+  color: #24292e;
+}
+
+.prose pre {
+  background-color: #f6f8fa;
+  padding: 1em;
+  border-radius: 6px;
+  overflow-x: auto;
+  color: #24292e;
+}
+
+/* Dark mode styles */
+.dark .prose code {
+  background-color: #2d2d2d;
+  color: #f8f8f2;
+}
+
+.dark .prose pre {
+  background-color: #2d2d2d;
+  color: #f8f8f2;
+}
+
+.dark .prose {
+  color: #e5e7eb; /* Default text color in dark mode */
+}
+
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;
