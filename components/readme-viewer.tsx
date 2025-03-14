@@ -92,43 +92,58 @@ export function ReadmeViewer({ readme, repoName }: ReadmeViewerProps) {
 
 // Using a more comprehensive markdown to HTML converter
 function markdownToHtml(markdown: string): string {
-  return (
-    markdown
-      // Headers
-      .replace(/^# (.*$)/gm, "<h1>$1</h1>")
-      .replace(/^## (.*$)/gm, "<h2>$1</h2>")
-      .replace(/^### (.*$)/gm, "<h3>$1</h3>")
-      .replace(/^#### (.*$)/gm, "<h4>$1</h4>")
-      .replace(/^##### (.*$)/gm, "<h5>$1</h5>")
-      .replace(/^###### (.*$)/gm, "<h6>$1</h6>")
-      // Bold
-      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-      // Italic
-      .replace(/\*(.*?)\*/g, "<em>$1</em>")
-      // Code blocks
-      .replace(/```([\s\S]*?)```/g, "<pre><code>$1</code></pre>")
-      // Inline code
-      .replace(/`([^`]+)`/g, "<code>$1</code>")
-      // Links
-      .replace(/\[(.*?)\]$$(.*?)$$/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
-      // Images
-      .replace(/!\[(.*?)\]$$(.*?)$$/g, '<img src="$2" alt="$1" />')
-      // Unordered lists
-      .replace(/^\s*[*-]\s(.*$)/gm, "<li>$1</li>")
-      // Ordered lists
-      .replace(/^\s*\d+\.\s(.*$)/gm, "<li>$1</li>")
-      // Wrap lists
-      .replace(/(<li>.*<\/li>)\s*(<li>)/g, "$1$2")
-      .replace(/(<li>.*<\/li>)(?!\s*<li>)/g, "<ul>$1</ul>")
-      // Horizontal rule
-      .replace(/^---$/gm, "<hr>")
-      // Blockquotes
-      .replace(/^>\s(.*$)/gm, "<blockquote>$1</blockquote>")
-      // Tables (basic support)
-      .replace(/\|(.+)\|/g, "<tr><td>$1</td></tr>")
-      .replace(/<tr>(.+)<\/tr>/g, "<table>$1</table>")
-      // Paragraphs (must be last)
-      .replace(/^(?!<[a-z])(.*$)/gm, (match) => (match.trim() ? "<p>" + match + "</p>" : ""))
-  )
+  // Convert headers
+  markdown = markdown
+    .replace(/^# (.*$)/gm, "<h1>$1</h1>")
+    .replace(/^## (.*$)/gm, "<h2>$1</h2>")
+    .replace(/^### (.*$)/gm, "<h3>$1</h3>")
+    .replace(/^#### (.*$)/gm, "<h4>$1</h4>")
+    .replace(/^##### (.*$)/gm, "<h5>$1</h5>")
+    .replace(/^###### (.*$)/gm, "<h6>$1</h6>");
+
+  // Convert bold and italic
+  markdown = markdown
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.*?)\*/g, "<em>$1</em>");
+
+  // Convert code blocks
+  markdown = markdown.replace(/```([\s\S]*?)```/g, "<pre><code>$1</code></pre>");
+
+  // Convert inline code
+  markdown = markdown.replace(/`([^`]+)`/g, "<code>$1</code>");
+
+  // Convert links
+  markdown = markdown.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+
+  // Convert images
+  markdown = markdown.replace(/!\[([^\]]+)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" />');
+
+  // Convert unordered lists
+  markdown = markdown.replace(/^\s*[-*+]\s(.*$)/gm, "<li>$1</li>");
+
+  // Convert ordered lists
+  markdown = markdown.replace(/^\s*\d+\.\s(.*$)/gm, "<li>$1</li>");
+
+  // Wrap lists in <ul> or <ol>
+  markdown = markdown.replace(/(<li>.*<\/li>)\s*(<li>)/g, "$1$2");
+  markdown = markdown.replace(/(<li>.*<\/li>)(?!\s*<li>)/g, "<ul>$1</ul>");
+
+  // Convert horizontal rules
+  markdown = markdown.replace(/^---$/gm, "<hr>");
+
+  // Convert blockquotes
+  markdown = markdown.replace(/^>\s(.*$)/gm, "<blockquote>$1</blockquote>");
+
+  // Convert tables (basic support)
+  markdown = markdown.replace(/\|(.+)\|/g, (match) => {
+    const cells = match.split("|").map((cell) => cell.trim());
+    return `<tr>${cells.map((cell) => `<td>${cell}</td>`).join("")}</tr>`;
+  });
+  markdown = markdown.replace(/<tr>(.+)<\/tr>/g, "<table>$1</table>");
+
+  // Convert paragraphs (must be last)
+  markdown = markdown.replace(/^(?!<[a-z])(.*$)/gm, (match) => (match.trim() ? "<p>" + match + "</p>" : ""));
+
+  return markdown;
 }
 
