@@ -14,7 +14,7 @@ interface ReadmeViewerProps {
   repoBranch: string
 }
 
-export function ReadmeViewer({ readme, repoName }: ReadmeViewerProps) {
+export function ReadmeViewer({ readme, repoName, repoOwner, repoBranch }: ReadmeViewerProps) {
   const { toast } = useToast()
   const [copied, setCopied] = useState(false)
 
@@ -45,6 +45,9 @@ export function ReadmeViewer({ readme, repoName }: ReadmeViewerProps) {
       description: `README-${repoName}.md has been downloaded`,
     })
   }
+
+  // Process readme content to handle GitHub relative links
+  const processedReadme = processGitHubLinks(readme, repoOwner, repoName, repoBranch)
 
   return (
     <Card>
@@ -77,12 +80,12 @@ export function ReadmeViewer({ readme, repoName }: ReadmeViewerProps) {
             <TabsTrigger value="raw">Raw Markdown</TabsTrigger>
           </TabsList>
           <TabsContent value="preview">
-            <div className="prose dark:prose-invert max-w-none border rounded-md p-4 bg-card">
-              <div dangerouslySetInnerHTML={{ __html: markdownToHtml(readme) }} />
+            <div className="prose dark:prose-invert max-w-none border rounded-md p-4 bg-card markdown-body">
+              <div dangerouslySetInnerHTML={{ __html: markdownToHtml(processedReadme) }} />
             </div>
           </TabsContent>
           <TabsContent value="raw">
-            <pre className="border rounded-md p-4 overflow-auto bg-muted text-sm">{readme}</pre>
+            <pre className="border rounded-md p-4 overflow-auto bg-muted text-sm">{processedReadme}</pre>
           </TabsContent>
         </Tabs>
       </CardContent>
@@ -90,8 +93,39 @@ export function ReadmeViewer({ readme, repoName }: ReadmeViewerProps) {
   )
 }
 
-// Using a more comprehensive markdown to HTML converter
+// Helper to process GitHub-style relative links
+function processGitHubLinks(markdown: string, owner: string, repo: string, branch: string): string {
+  // Convert relative image links to absolute GitHub links
+  return markdown
+    // Handle image links that start with ./
+    .replace(/!\[([^\]]+)\]\(\.\/(.*?)\)/g, 
+      `![$1](https://github.com/${owner}/${repo}/raw/${branch}/$2)`)
+    // Handle relative links to files
+    .replace(/\[([^\]]+)\]\(\.\/(.*?)\)/g, 
+      `[$1](https://github.com/${owner}/${repo}/blob/${branch}/$2)`)
+    // Handle anchor links (keep them as-is but improve later if needed)
+    .replace(/\[([^\]]+)\]\(#(.*?)\)/g, `[$1](#$2)`);
+}
+
+// Comprehensive markdown to HTML converter
 function markdownToHtml(markdown: string): string {
+  // Process code blocks first (to avoid formatting inside them)
+  const codeBlocks: string[] = [];
+  markdown = markdown.replace(/```([a-z]*)\n([\s\S]*?)```/g, (match, language, code) => {
+    const index = codeBlocks.length;
+    const languageClass = language ? ` class="language-${language}"` : '';
+    codeBlocks.push(`<pre><code${languageClass}>${escapeHtml(code)}</code></pre>`);
+    return `__CODE_BLOCK_${index}__`;
+  });
+
+  // Process inline code (same reason)
+  const inlineCode: string[] = [];
+  markdown = markdown.replace(/`([^`]+)`/g, (match, code) => {
+    const index = inlineCode.length;
+    inlineCode.push(`<code>${escapeHtml(code)}</code>`);
+    return `__INLINE_CODE_${index}__`;
+  });
+
   // Convert headers
   markdown = markdown
     .replace(/^# (.*$)/gm, "<h1>$1</h1>")
@@ -104,46 +138,125 @@ function markdownToHtml(markdown: string): string {
   // Convert bold and italic
   markdown = markdown
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.*?)\*/g, "<em>$1</em>");
+    .replace(/\*(.*?)\*/g, "<em>$1</em>")
+    .replace(/__(.*?)__/g, "<strong>$1</strong>")
+    .replace(/_(.*?)_/g, "<em>$1</em>");
 
-  // Convert code blocks
-  markdown = markdown.replace(/```([\s\S]*?)```/g, "<pre><code>$1</code></pre>");
-
-  // Convert inline code
-  markdown = markdown.replace(/`([^`]+)`/g, "<code>$1</code>");
+  // Handle badges/shields (like shield.io badges)
+  markdown = markdown.replace(/!\[([^\]]*)\]\((https:\/\/img\.shields\.io\/[^)]+)\)/g, 
+    '<img src="$2" alt="$1" class="inline-badge" style="display:inline-block;vertical-align:middle;margin:0 4px 0 0;" />');
+  
+  // Convert other images
+  markdown = markdown.replace(/!\[([^\]]+)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" />');
 
   // Convert links
   markdown = markdown.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
 
-  // Convert images
-  markdown = markdown.replace(/!\[([^\]]+)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" />');
+  // Process lists
+  // Unordered lists
+  markdown = markdown.replace(/^\s*[-*+]\s+(.*)$/gm, "<li>$1</li>");
+  
+  // Ordered lists
+  markdown = markdown.replace(/^\s*\d+\.\s+(.*)$/gm, "<li>$1</li>");
+  
+  // Group consecutive list items
+  let parsedContent = "";
+  let listBuffer = "";
+  let inList = false;
+  
+  markdown.split("\n").forEach((line) => {
+    if (line.startsWith("<li>")) {
+      if (!inList) {
+        inList = true;
+        // Check if this is the start of an ordered list
+        const isOrdered = line.match(/^\d+\./);
+        listBuffer = isOrdered ? "<ol>" : "<ul>";
+      }
+      listBuffer += line;
+    } else {
+      if (inList) {
+        // End of list
+        listBuffer += listBuffer.includes("<ol>") ? "</ol>" : "</ul>";
+        parsedContent += listBuffer;
+        listBuffer = "";
+        inList = false;
+      }
+      parsedContent += line + "\n";
+    }
+  });
+  
+  // Handle any unclosed list
+  if (inList) {
+    listBuffer += listBuffer.includes("<ol>") ? "</ol>" : "</ul>";
+    parsedContent += listBuffer;
+  }
+  
+  markdown = parsedContent;
 
-  // Convert unordered lists
-  markdown = markdown.replace(/^\s*[-*+]\s(.*$)/gm, "<li>$1</li>");
-
-  // Convert ordered lists
-  markdown = markdown.replace(/^\s*\d+\.\s(.*$)/gm, "<li>$1</li>");
-
-  // Wrap lists in <ul> or <ol>
-  markdown = markdown.replace(/(<li>.*<\/li>)\s*(<li>)/g, "$1$2");
-  markdown = markdown.replace(/(<li>.*<\/li>)(?!\s*<li>)/g, "<ul>$1</ul>");
+  // Convert blockquotes
+  markdown = markdown.replace(/^>\s(.*)$/gm, "<blockquote>$1</blockquote>");
+  
+  // Group consecutive blockquotes
+  markdown = markdown.replace(/<\/blockquote>\s*<blockquote>/g, "<br>");
 
   // Convert horizontal rules
   markdown = markdown.replace(/^---$/gm, "<hr>");
+  markdown = markdown.replace(/^\*\*\*$/gm, "<hr>");
+  markdown = markdown.replace(/^___$/gm, "<hr>");
 
-  // Convert blockquotes
-  markdown = markdown.replace(/^>\s(.*$)/gm, "<blockquote>$1</blockquote>");
-
-  // Convert tables (basic support)
-  markdown = markdown.replace(/\|(.+)\|/g, (match) => {
-    const cells = match.split("|").map((cell) => cell.trim());
-    return `<tr>${cells.map((cell) => `<td>${cell}</td>`).join("")}</tr>`;
+  // Process tables
+  markdown = markdown.replace(/^\|(.+)\|$/gm, (match) => {
+    if (match.match(/^\|\s*[-:]+\s*\|$/)) {
+      // This is a separator row, skip it
+      return "";
+    }
+    
+    const cells = match.split("|")
+      .filter(cell => cell.trim() !== "")
+      .map(cell => cell.trim());
+    
+    const isHeader = match.split("\n")[0] && match.split("\n")[1]?.match(/^\|\s*[-:]+\s*\|$/);
+    
+    if (isHeader) {
+      return `<tr>${cells.map(cell => `<th>${cell}</th>`).join("")}</tr>`;
+    } else {
+      return `<tr>${cells.map(cell => `<td>${cell}</td>`).join("")}</tr>`;
+    }
   });
-  markdown = markdown.replace(/<tr>(.+)<\/tr>/g, "<table>$1</table>");
+  
+  // Wrap tables properly
+  markdown = markdown.replace(/(<tr>.*<\/tr>)+/g, "<table>$&</table>");
 
-  // Convert paragraphs (must be last)
-  markdown = markdown.replace(/^(?!<[a-z])(.*$)/gm, (match) => (match.trim() ? "<p>" + match + "</p>" : ""));
+  // Handle paragraphs (text not already in HTML tags)
+  // This is for text that's not already wrapped in tags
+  const paragraphs = markdown.split("\n\n");
+  markdown = paragraphs.map(p => {
+    p = p.trim();
+    if (p && !p.startsWith("<")) {
+      return `<p>${p}</p>`;
+    }
+    return p;
+  }).join("\n\n");
+
+  // Restore code blocks
+  codeBlocks.forEach((block, index) => {
+    markdown = markdown.replace(`__CODE_BLOCK_${index}__`, block);
+  });
+
+  // Restore inline code
+  inlineCode.forEach((code, index) => {
+    markdown = markdown.replace(`__INLINE_CODE_${index}__`, code);
+  });
 
   return markdown;
 }
 
+// Helper function to escape HTML in code blocks
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
