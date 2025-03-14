@@ -21,11 +21,7 @@ export function RepoExplorer() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="max-w-3xl mx-auto space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Generate README Files</h2>
-        <p className="text-muted-foreground">Search for your GitHub user, choose your repository and Generate.</p>
-      </div>
+    
 
       <div className="max-w-3xl mx-auto">
         <RepoSearch

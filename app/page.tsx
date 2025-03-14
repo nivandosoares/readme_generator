@@ -1,6 +1,6 @@
-
 import { Header } from "@/components/header";
 import { RepoExplorer } from "@/components/repo-explorer";
+import { ArrowRight } from "lucide-react"; // Import ArrowRight icon
 
 export default function Home() {
   return (
@@ -14,15 +14,50 @@ export default function Home() {
           {/* Hero Section */}
           <div className="text-center mb-12">
             <h1 className="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400">
-              GitHub README Generator
+              Stop Procrastinating on READMEs
             </h1>
             <p className="mt-4 text-lg text-gray-600 dark:text-gray-300">
-              Create beautiful and professional README files for your GitHub repositories in seconds.
+              We know you'd rather code than write docs. Let us handle the boring part—generate a professional README in seconds.
             </p>
+            <div className="mt-8">
+              <a
+                href="#repo-explorer"
+                className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors duration-200"
+              >
+                Generate Your README Now
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </a>
+            </div>
+            {/* Fun Visual Element (No Image) */}
+            <div className="mt-12 flex justify-center">
+              <div className="w-24 h-24 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-12 w-12 text-blue-600 dark:text-blue-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+            </div>
+            {/* Testimonial */}
+            <div className="mt-8 text-sm text-gray-500 dark:text-gray-400">
+              <p>
+                "I used to spend hours writing READMEs. Now I just generate them in seconds. Lifesaver!" –{" "}
+                <span className="font-semibold">@LazyDev123</span>
+              </p>
+            </div>
           </div>
 
           {/* Repo Explorer */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300">
+          <div id="repo-explorer" className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300">
             <RepoExplorer />
           </div>
         </div>
@@ -34,12 +69,12 @@ export default function Home() {
           <p>
             GitHub README Generator &copy; {new Date().getFullYear()} | Made with ❤️ by{" "}
             <a
-              href="https://github.com/your-username"
+              href="https://github.com/nivandosoares"
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 dark:text-blue-400 hover:underline"
             >
-              Your Name
+              Nivando Soares
             </a>
           </p>
         </div>
@@ -47,4 +82,3 @@ export default function Home() {
     </div>
   );
 }
-
