@@ -282,6 +282,8 @@ ${analysis.topics.map((topic) => `- ${topic}`).join("\n")}
       const structureSection = `
 ## Project Structure
 
+Here's a quick overview of the project structure:
+
 \`\`\`
 ${displayedStructure.join("\n")}${analysis.structure.length > 20 ? "\n... (and more files)" : ""}
 \`\`\`
@@ -296,6 +298,8 @@ ${displayedStructure.join("\n")}${analysis.structure.length > 20 ? "\n... (and m
     if (analysis.dependencies.length > 0 || analysis.devDependencies.length > 0) {
       dependenciesSection = `
 ## Dependencies
+
+This project relies on the following dependencies:
 
 ${
   analysis.dependencies.length > 0
@@ -339,14 +343,66 @@ ${analysis.devDependencies.map((dep) => `- ${dep}`).join("\n")}
       badges.push("![CI](https://img.shields.io/badge/CI-yes-brightgreen)")
     }
 
+    if (analysis.hasDocs) {
+      badges.push("![Docs](https://img.shields.io/badge/docs-yes-brightgreen)")
+    }
+
     const badgesSection = badges.join(" ")
     readme = readme.replace("{{badges}}", badgesSection)
+
+    // Add a personalized features section
+    const features = generateFeaturesSection(analysis)
+    readme = readme.replace("{{features}}", features)
 
     return readme
   } catch (error) {
     console.error("Error generating README from template:", error)
     return generateFallbackReadme(analysis)
   }
+}
+
+// Generate a personalized features section based on the repository analysis
+function generateFeaturesSection(analysis: RepositoryAnalysis): string {
+  const features = []
+
+  if (analysis.hasTests) {
+    features.push("- Comprehensive test suite for reliable code")
+  }
+
+  if (analysis.hasDocs) {
+    features.push("- Detailed documentation for easy onboarding")
+  }
+
+  if (analysis.hasCI) {
+    features.push("- Continuous integration for seamless development")
+  }
+
+  if (analysis.dependencies.length > 0) {
+    features.push(`- Built with modern ${analysis.language} libraries and frameworks`)
+  }
+
+  if (analysis.structure.some((path) => path.includes("api") || path.includes("routes"))) {
+    features.push("- RESTful API for easy integration")
+  }
+
+  if (analysis.structure.some((path) => path.includes("ui") || path.includes("components"))) {
+    features.push("- User-friendly interface components")
+  }
+
+  if (features.length === 0) {
+    return `
+## Features
+
+- A simple yet powerful ${analysis.language} project
+- Easy to set up and run
+`
+  }
+
+  return `
+## Features
+
+${features.join("\n")}
+`
 }
 
 // Fallback README generator in case the template approach fails
@@ -370,6 +426,10 @@ ${analysis.installCommand}
 \`\`\`
 ${analysis.runCommand}
 \`\`\`
+
+## Features
+
+${generateFeaturesSection(analysis)}
 
 ## License
 
@@ -412,13 +472,11 @@ function getReadmeTemplate(language: string): string {
 {{runCommand}}
 \`\`\`
 
-## Features
-
-- Feature 1
-- Feature 2
-- Feature 3
+{{features}}
 
 ## Contributing
+
+We welcome contributions! Here's how you can get started:
 
 1. Fork the repository
 2. Create your feature branch (\`git checkout -b feature/amazing-feature\`)
@@ -469,11 +527,7 @@ This project is licensed under the {{license}}.
 {{runCommand}}
 \`\`\`
 
-## Features
-
-- Modern JavaScript/TypeScript syntax
-- Modular architecture
-- Easy to extend
+{{features}}
 
 ## Scripts
 
@@ -482,6 +536,8 @@ This project is licensed under the {{license}}.
 - \`npm run build\` - Build for production
 
 ## Contributing
+
+We welcome contributions! Here's how you can get started:
 
 1. Fork the repository
 2. Create your feature branch (\`git checkout -b feature/amazing-feature\`)
@@ -528,11 +584,7 @@ This project is licensed under the {{license}}.
 {{runCommand}}
 \`\`\`
 
-## Features
-
-- Simple PHP application
-- Browser-based interface
-- Easy to deploy on any PHP server
+{{features}}
 
 ## Requirements
 
@@ -540,6 +592,8 @@ This project is licensed under the {{license}}.
 - Web server (Apache, Nginx, or built-in PHP server)
 
 ## Contributing
+
+We welcome contributions! Here's how you can get started:
 
 1. Fork the repository
 2. Create your feature branch (\`git checkout -b feature/amazing-feature\`)
@@ -586,13 +640,11 @@ This project is licensed under the {{license}}.
 {{runCommand}}
 \`\`\`
 
-## Features
-
-- Easy to use Python API
-- Comprehensive documentation
-- Extensive test coverage
+{{features}}
 
 ## Contributing
+
+We welcome contributions! Here's how you can get started:
 
 1. Fork the repository
 2. Create your feature branch (\`git checkout -b feature/amazing-feature\`)
