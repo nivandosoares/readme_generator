@@ -21,8 +21,7 @@ export function RepoExplorer() {
   }
 
   return (
-    
-
+    <div>
       <div className="max-w-3xl mx-auto">
         <RepoSearch
           setRepos={setRepos}
@@ -64,6 +63,6 @@ export function RepoExplorer() {
         </Tabs>
       )}
     </div>
-  )
+  );
 }
 
