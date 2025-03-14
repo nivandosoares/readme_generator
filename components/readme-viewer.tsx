@@ -109,10 +109,10 @@ function processGitHubLinks(markdown: string, owner: string, repo: string, branc
 
 // Comprehensive markdown to HTML converter
 function markdownToHtml(markdown: string): string {
-  // Process code blocks first (to avoid formatting inside them)
+  // Arrays to store extracted code blocks and inline code snippets
   const codeBlocks: string[] = [];
   const inlineCodes: string[] = [];
-  
+
   // Step 1: Extract code blocks with language specification
   markdown = markdown.replace(/```([a-z]*)\n([\s\S]*?)```/g, (match, language, code) => {
     const index = codeBlocks.length;
@@ -121,13 +121,19 @@ function markdownToHtml(markdown: string): string {
     return `__CODE_BLOCK_${index}__`;
   });
 
-  // Process inline code (same reason)
-  const inlineCode: string[] = [];
+  // Step 2: Extract inline code snippets
   markdown = markdown.replace(/`([^`]+)`/g, (match, code) => {
-    const index = inlineCode.length;
-    inlineCode.push(`<code>${escapeHtml(code)}</code>`);
+    const index = inlineCodes.length;
+    inlineCodes.push(`<code>${escapeHtml(code)}</code>`);
     return `__INLINE_CODE_${index}__`;
   });
+
+
+  // Step 4: Restore code blocks
+  codeBlocks.forEach((block, index) => {
+    markdown = markdown.replace(`__CODE_BLOCK_${index}__`, block);
+  });
+
 
   // Convert headers
   markdown = markdown
