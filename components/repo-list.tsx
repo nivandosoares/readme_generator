@@ -53,7 +53,8 @@ export function RepoList({
       })
     } catch (error) {
       console.error("Failed to generate README:", error)
-      const errorMessage = error instanceof Error ? error.message : "Failed to generate README"
+      const errorMessage = error instanceof Error ? error.message : "Failed to generate README. Please try again."
+
       setError(errorMessage)
 
       toast({

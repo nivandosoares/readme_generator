@@ -72,10 +72,8 @@ export async function analyzeRepository(
 
   // JavaScript/TypeScript detection
   const hasPackageJson = hasFile("package.json")
-  const hasNodeModules = contents.some((path) => path.toLowerCase().includes("node_modules"))
   const hasYarnLock = hasFile("yarn.lock")
   const hasPnpmLock = hasFile("pnpm-lock.yaml")
-  const hasNpmLock = hasFile("package-lock.json")
   const hasTsConfig = hasFile("tsconfig.json")
   const hasJsFiles = hasExtension("js")
   const hasTsFiles = hasExtension("ts") || hasExtension("tsx")
@@ -282,8 +280,6 @@ ${analysis.topics.map((topic) => `- ${topic}`).join("\n")}
       const structureSection = `
 ## Project Structure
 
-Here's a quick overview of the project structure:
-
 \`\`\`
 ${displayedStructure.join("\n")}${analysis.structure.length > 20 ? "\n... (and more files)" : ""}
 \`\`\`
@@ -298,8 +294,6 @@ ${displayedStructure.join("\n")}${analysis.structure.length > 20 ? "\n... (and m
     if (analysis.dependencies.length > 0 || analysis.devDependencies.length > 0) {
       dependenciesSection = `
 ## Dependencies
-
-This project relies on the following dependencies:
 
 ${
   analysis.dependencies.length > 0
@@ -343,66 +337,14 @@ ${analysis.devDependencies.map((dep) => `- ${dep}`).join("\n")}
       badges.push("![CI](https://img.shields.io/badge/CI-yes-brightgreen)")
     }
 
-    if (analysis.hasDocs) {
-      badges.push("![Docs](https://img.shields.io/badge/docs-yes-brightgreen)")
-    }
-
     const badgesSection = badges.join(" ")
     readme = readme.replace("{{badges}}", badgesSection)
-
-    // Add a personalized features section
-    const features = generateFeaturesSection(analysis)
-    readme = readme.replace("{{features}}", features)
 
     return readme
   } catch (error) {
     console.error("Error generating README from template:", error)
     return generateFallbackReadme(analysis)
   }
-}
-
-// Generate a personalized features section based on the repository analysis
-function generateFeaturesSection(analysis: RepositoryAnalysis): string {
-  const features = []
-
-  if (analysis.hasTests) {
-    features.push("- Comprehensive test suite for reliable code")
-  }
-
-  if (analysis.hasDocs) {
-    features.push("- Detailed documentation for easy onboarding")
-  }
-
-  if (analysis.hasCI) {
-    features.push("- Continuous integration for seamless development")
-  }
-
-  if (analysis.dependencies.length > 0) {
-    features.push(`- Built with modern ${analysis.language} libraries and frameworks`)
-  }
-
-  if (analysis.structure.some((path) => path.includes("api") || path.includes("routes"))) {
-    features.push("- RESTful API for easy integration")
-  }
-
-  if (analysis.structure.some((path) => path.includes("ui") || path.includes("components"))) {
-    features.push("- User-friendly interface components")
-  }
-
-  if (features.length === 0) {
-    return `
-## Features
-
-- A simple yet powerful ${analysis.language} project
-- Easy to set up and run
-`
-  }
-
-  return `
-## Features
-
-${features.join("\n")}
-`
 }
 
 // Fallback README generator in case the template approach fails
@@ -426,10 +368,6 @@ ${analysis.installCommand}
 \`\`\`
 ${analysis.runCommand}
 \`\`\`
-
-## Features
-
-${generateFeaturesSection(analysis)}
 
 ## License
 
@@ -472,11 +410,13 @@ function getReadmeTemplate(language: string): string {
 {{runCommand}}
 \`\`\`
 
-{{features}}
+## Features
+
+- Feature 1
+- Feature 2
+- Feature 3
 
 ## Contributing
-
-We welcome contributions! Here's how you can get started:
 
 1. Fork the repository
 2. Create your feature branch (\`git checkout -b feature/amazing-feature\`)
@@ -527,7 +467,11 @@ This project is licensed under the {{license}}.
 {{runCommand}}
 \`\`\`
 
-{{features}}
+## Features
+
+- Modern JavaScript/TypeScript syntax
+- Modular architecture
+- Easy to extend
 
 ## Scripts
 
@@ -536,8 +480,6 @@ This project is licensed under the {{license}}.
 - \`npm run build\` - Build for production
 
 ## Contributing
-
-We welcome contributions! Here's how you can get started:
 
 1. Fork the repository
 2. Create your feature branch (\`git checkout -b feature/amazing-feature\`)
@@ -584,7 +526,11 @@ This project is licensed under the {{license}}.
 {{runCommand}}
 \`\`\`
 
-{{features}}
+## Features
+
+- Simple PHP application
+- Browser-based interface
+- Easy to deploy on any PHP server
 
 ## Requirements
 
@@ -592,8 +538,6 @@ This project is licensed under the {{license}}.
 - Web server (Apache, Nginx, or built-in PHP server)
 
 ## Contributing
-
-We welcome contributions! Here's how you can get started:
 
 1. Fork the repository
 2. Create your feature branch (\`git checkout -b feature/amazing-feature\`)
@@ -640,11 +584,279 @@ This project is licensed under the {{license}}.
 {{runCommand}}
 \`\`\`
 
-{{features}}
+## Features
+
+- Easy to use Python API
+- Comprehensive documentation
+- Extensive test coverage
 
 ## Contributing
 
-We welcome contributions! Here's how you can get started:
+1. Fork the repository
+2. Create your feature branch (\`git checkout -b feature/amazing-feature\`)
+3. Commit your changes (\`git commit -m 'Add some amazing feature'\`)
+4. Push to the branch (\`git push origin feature/amazing-feature\`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the {{license}}.
+`
+
+    case "java":
+      return `# {{name}}
+
+{{badges}}
+
+{{description}}
+
+## Table of Contents
+
+- [Installation](#installation)
+- [Usage](#usage)
+- [Features](#features)
+- [Project Structure](#project-structure)
+- [Contributing](#contributing)
+- [License](#license)
+
+{{topics}}
+
+{{structure}}
+
+{{dependencies}}
+
+## Installation
+
+\`\`\`bash
+{{installCommand}}
+\`\`\`
+
+## Usage
+
+\`\`\`bash
+{{runCommand}}
+\`\`\`
+
+## Features
+
+- Object-oriented design
+- Robust error handling
+- Comprehensive documentation
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (\`git checkout -b feature/amazing-feature\`)
+3. Commit your changes (\`git commit -m 'Add some amazing feature'\`)
+4. Push to the branch (\`git push origin feature/amazing-feature\`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the {{license}}.
+`
+
+    case "go":
+      return `# {{name}}
+
+{{badges}}
+
+{{description}}
+
+## Table of Contents
+
+- [Installation](#installation)
+- [Usage](#usage)
+- [Features](#features)
+- [Project Structure](#project-structure)
+- [Contributing](#contributing)
+- [License](#license)
+
+{{topics}}
+
+{{structure}}
+
+{{dependencies}}
+
+## Installation
+
+\`\`\`bash
+{{installCommand}}
+\`\`\`
+
+## Usage
+
+\`\`\`bash
+{{runCommand}}
+\`\`\`
+
+## Features
+
+- Concurrent processing
+- Strong typing
+- Efficient memory usage
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (\`git checkout -b feature/amazing-feature\`)
+3. Commit your changes (\`git commit -m 'Add some amazing feature'\`)
+4. Push to the branch (\`git push origin feature/amazing-feature\`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the {{license}}.
+`
+
+    case "rust":
+      return `# {{name}}
+
+{{badges}}
+
+{{description}}
+
+## Table of Contents
+
+- [Installation](#installation)
+- [Usage](#usage)
+- [Features](#features)
+- [Project Structure](#project-structure)
+- [Contributing](#contributing)
+- [License](#license)
+
+{{topics}}
+
+{{structure}}
+
+{{dependencies}}
+
+## Installation
+
+\`\`\`bash
+{{installCommand}}
+\`\`\`
+
+## Usage
+
+\`\`\`bash
+{{runCommand}}
+\`\`\`
+
+## Features
+
+- Memory safety without garbage collection
+- Zero-cost abstractions
+- Guaranteed thread safety
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (\`git checkout -b feature/amazing-feature\`)
+3. Commit your changes (\`git commit -m 'Add some amazing feature'\`)
+4. Push to the branch (\`git push origin feature/amazing-feature\`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the {{license}}.
+`
+
+    case "c#":
+      return `# {{name}}
+
+{{badges}}
+
+{{description}}
+
+## Table of Contents
+
+- [Installation](#installation)
+- [Usage](#usage)
+- [Features](#features)
+- [Project Structure](#project-structure)
+- [Contributing](#contributing)
+- [License](#license)
+
+{{topics}}
+
+{{structure}}
+
+{{dependencies}}
+
+## Installation
+
+\`\`\`bash
+{{installCommand}}
+\`\`\`
+
+## Usage
+
+\`\`\`bash
+{{runCommand}}
+\`\`\`
+
+## Features
+
+- .NET Core compatibility
+- Cross-platform support
+- Strong typing and performance
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (\`git checkout -b feature/amazing-feature\`)
+3. Commit your changes (\`git commit -m 'Add some amazing feature'\`)
+4. Push to the branch (\`git push origin feature/amazing-feature\`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the {{license}}.
+`
+
+    case "c":
+    case "c++":
+      return `# {{name}}
+
+{{badges}}
+
+{{description}}
+
+## Table of Contents
+
+- [Installation](#installation)
+- [Usage](#usage)
+- [Features](#features)
+- [Project Structure](#project-structure)
+- [Contributing](#contributing)
+- [License](#license)
+
+{{topics}}
+
+{{structure}}
+
+{{dependencies}}
+
+## Installation
+
+\`\`\`bash
+{{installCommand}}
+\`\`\`
+
+## Usage
+
+\`\`\`bash
+{{runCommand}}
+\`\`\`
+
+## Features
+
+- High performance
+- Low-level memory management
+- Efficient algorithms
+
+## Contributing
 
 1. Fork the repository
 2. Create your feature branch (\`git checkout -b feature/amazing-feature\`)
@@ -661,3 +873,4 @@ This project is licensed under the {{license}}.
       return defaultTemplate
   }
 }
+

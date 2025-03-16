@@ -1,4 +1,4 @@
-import type { Config } from "tailwindcss";
+import type { Config } from "tailwindcss"
 
 const config = {
   darkMode: ["class"],
@@ -73,56 +73,17 @@ const config = {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
       },
-      typography: (theme: any) => ({
+      typography: {
         DEFAULT: {
           css: {
             maxWidth: "100%",
-            color: theme("colors.foreground"), // Use foreground color for text
-            code: {
-              backgroundColor: theme("colors.muted.DEFAULT"), // Light mode code background
-              color: theme("colors.foreground"), // Light mode code text color
-              padding: "0.2em 0.4em",
-              borderRadius: "0.25rem",
-              fontWeight: "400",
-            },
-            pre: {
-              backgroundColor: theme("colors.muted.DEFAULT"), // Light mode pre background
-              color: theme("colors.foreground"), // Light mode pre text color
-              padding: "1rem",
-              borderRadius: "0.5rem",
-              overflowX: "auto",
-            },
-            "code::before": {
-              content: '""', // Remove pseudo-elements
-            },
-            "code::after": {
-              content: '""', // Remove pseudo-elements
-            },
-            img: {
-              borderRadius: "0.5rem", // Style for badges/images
-            },
           },
         },
-        dark: {
-          css: {
-            color: theme("colors.foreground"), // Dark mode text color
-            code: {
-              backgroundColor: theme("colors.muted.foreground"), // Dark mode code background
-              color: theme("colors.background"), // Dark mode code text color
-            },
-            pre: {
-              backgroundColor: theme("colors.muted.foreground"), // Dark mode pre background
-              color: theme("colors.background"), // Dark mode pre text color
-            },
-            img: {
-              filter: "invert(1)", // Invert badge colors for dark mode
-            },
-          },
-        },
-      }),
+      },
     },
   },
   plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
-} satisfies Config;
+} satisfies Config
 
-export default config;
+export default config
+
