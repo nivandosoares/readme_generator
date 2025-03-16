@@ -1,4 +1,5 @@
 import { cache } from "@/lib/cache"
+import { expect, describe, beforeEach, afterEach, it, jest } from "@jest/globals"
 
 describe("Cache", () => {
   beforeEach(() => {
@@ -42,13 +43,23 @@ describe("Cache", () => {
   })
 
   it("should clear all cache entries", () => {
+    // Mock localStorage to ensure it's properly cleared
+    jest.spyOn(localStorage, "removeItem")
+
     cache.set("key1", "value1")
     cache.set("key2", "value2")
+
+    // Clear the in-memory cache but keep localStorage for testing
+    cache["cache"].clear()
 
     cache.clear()
 
     expect(cache.get("key1")).toBeNull()
     expect(cache.get("key2")).toBeNull()
+
+    // Verify localStorage.removeItem was called for each key
+    expect(localStorage.removeItem).toHaveBeenCalledWith("github_cache_key1")
+    expect(localStorage.removeItem).toHaveBeenCalledWith("github_cache_key2")
   })
 })
 

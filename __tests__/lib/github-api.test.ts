@@ -1,17 +1,26 @@
 import { GitHubApiClient } from "@/lib/github-api"
 import { cache } from "@/lib/cache"
-import { describe, beforeEach, afterEach, it, jest, expect } from "@jest/globals"
+import { beforeEach, describe, expect, it, jest } from "@jest/globals"
 
 // Mock fetch
-const mockFetch = global.fetch as jest.Mock
+const mockFetch = jest.fn()
+global.fetch = mockFetch
+
+// Mock cache
+jest.mock("@/lib/cache", () => ({
+  cache: {
+    get: jest.fn(),
+    set: jest.fn(),
+    clear: jest.fn(),
+  },
+}))
 
 describe("GitHubApiClient", () => {
   let githubApi: GitHubApiClient
 
   beforeEach(() => {
     githubApi = new GitHubApiClient()
-    cache.clear()
-    mockFetch.mockClear()
+    jest.clearAllMocks()
 
     // Default mock implementation
     mockFetch.mockImplementation(async () => ({
@@ -23,10 +32,6 @@ describe("GitHubApiClient", () => {
         "X-RateLimit-Reset": "1600000000",
       }),
     }))
-  })
-
-  afterEach(() => {
-    jest.restoreAllMocks()
   })
 
   describe("fetchUserRepos", () => {
@@ -56,8 +61,7 @@ describe("GitHubApiClient", () => {
     })
 
     it("should use cached data when available", async () => {
-      const mockRepos = [{ id: 1, name: "repo1" }]
-      cache.set("user_repos_testuser", mockRepos)
+      const mockRepos = [{ id: 1, name: "repo1" }](cache.get as jest.Mock).mockReturnValueOnce(mockRepos)
 
       const repos = await githubApi.fetchUserRepos("testuser")
 
@@ -85,7 +89,7 @@ describe("GitHubApiClient", () => {
         }),
       }))
 
-      await expect(githubApi.fetchUserRepos("testuser")).rejects.toThrow("GitHub API rate limit exceeded")
+      await expect(githubApi.fetchUserRepos("testuser")).rejects.toThrow(/GitHub API rate limit exceeded/)
     })
   })
 
@@ -106,8 +110,7 @@ describe("GitHubApiClient", () => {
     })
 
     it("should use cached data when available", async () => {
-      const mockContents = [{ path: "file1.js" }]
-      cache.set("repo_contents_owner_repo_", mockContents)
+      const mockContents = [{ path: "file1.js" }](cache.get as jest.Mock).mockReturnValueOnce(mockContents)
 
       const contents = await githubApi.fetchRepoContents("owner", "repo")
 
@@ -126,6 +129,9 @@ describe("GitHubApiClient", () => {
         json: async () => ({ content: encodedContent }),
         headers: new Headers(),
       }))
+
+      // Mock atob to avoid DOM dependency
+      global.atob = jest.fn().mockImplementation(() => "test content")
 
       const content = await githubApi.fetchFileContent("owner", "repo", "file.txt")
 

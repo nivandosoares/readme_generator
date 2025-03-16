@@ -1,18 +1,17 @@
 import "@testing-library/jest-dom"
-import { jest } from "@jest/globals"
 
 // Mock localStorage
 const localStorageMock = (() => {
-  let store: Record<string, string> = {}
+  let store = {}
 
   return {
-    getItem(key: string) {
+    getItem(key) {
       return store[key] || null
     },
-    setItem(key: string, value: string) {
+    setItem(key, value) {
       store[key] = value.toString()
     },
-    removeItem(key: string) {
+    removeItem(key) {
       delete store[key]
     },
     clear() {
