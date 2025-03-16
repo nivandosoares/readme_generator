@@ -2,206 +2,36 @@
 
 import type { Repository } from "./types"
 import { analyzeRepository, generateReadmeFromAnalysis } from "./llm"
+import { githubApi } from "./github-api"
 
-// Rate limiting configuration
-const RATE_LIMIT = 10 // requests per minute
-const RATE_LIMIT_WINDOW = 60 * 1000 // 1 minute in milliseconds
-const requestCounts = new Map<string, { count: number; resetTime: number }>()
-
-// Rate limiting function
-function checkRateLimit(userId: string): boolean {
-  const now = Date.now()
-  const userRateLimit = requestCounts.get(userId)
-
-  if (!userRateLimit || now > userRateLimit.resetTime) {
-    // Reset rate limit if window has passed
-    requestCounts.set(userId, { count: 1, resetTime: now + RATE_LIMIT_WINDOW })
-    return true
-  }
-
-  if (userRateLimit.count >= RATE_LIMIT) {
-    return false // Rate limit exceeded
-  }
-
-  // Increment count
-  userRateLimit.count += 1
-  requestCounts.set(userId, userRateLimit)
-  return true
-}
-
+// Update the fetchUserRepos function
 export async function fetchUserRepos(username: string): Promise<Repository[]> {
   try {
-    // Apply rate limiting
-    if (!checkRateLimit(`user_${username}`)) {
-      throw new Error("Rate limit exceeded. Please try again later.")
-    }
-
-    const response = await fetch(`https://api.github.com/users/${username}/repos?sort=updated&per_page=10`, {
-      headers: {
-        Accept: "application/vnd.github.v3+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-      },
-    })
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error("GitHub user not found")
-      }
-      if (response.status === 403) {
-        throw new Error("GitHub API rate limit exceeded")
-      }
-      throw new Error(`GitHub API error: ${response.status}`)
-    }
-
-    const data = await response.json()
-    return data
+    return await githubApi.fetchUserRepos(username)
   } catch (error) {
     console.error("Error fetching repositories:", error)
     throw error
   }
 }
 
-// Function to fetch top-level repository contents only
-async function fetchTopLevelContents(repo: Repository): Promise<string[]> {
-  try {
-    const response = await fetch(`https://api.github.com/repos/${repo.full_name}/contents`, {
-      headers: {
-        Accept: "application/vnd.github.v3+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-      },
-    })
-
-    if (!response.ok) {
-      if (response.status === 403) {
-        console.warn(`Rate limit exceeded when fetching contents for ${repo.full_name}`)
-        return []
-      }
-      if (response.status === 404) {
-        console.warn(`Contents not found for ${repo.full_name}`)
-        return []
-      }
-      console.warn(`Error fetching contents for ${repo.full_name}: ${response.status}`)
-      return []
-    }
-
-    const contents = await response.json()
-
-    if (!Array.isArray(contents)) {
-      return [contents.name]
-    }
-
-    return contents.map((item: any) => item.name)
-  } catch (error) {
-    console.error("Error fetching top-level contents:", error)
-    return []
-  }
-}
-
-// Function to fetch common important files that might exist in the repo
-async function fetchImportantFiles(repo: Repository): Promise<string[]> {
-  const importantFiles = [
-    "package.json",
-    "requirements.txt",
-    "setup.py",
-    "Gemfile",
-    "pom.xml",
-    "build.gradle",
-    "go.mod",
-    "Cargo.toml",
-    ".github/workflows/main.yml",
-    ".travis.yml",
-    "circle.yml",
-    ".gitlab-ci.yml",
-    "README.md",
-    "CONTRIBUTING.md",
-    "LICENSE",
-    ".gitignore",
-  ]
-
-  const results: string[] = []
-
-  for (const file of importantFiles) {
-    try {
-      const response = await fetch(`https://api.github.com/repos/${repo.full_name}/contents/${file}`, {
-        headers: {
-          Accept: "application/vnd.github.v3+json",
-          "X-GitHub-Api-Version": "2022-11-28",
-        },
-      })
-
-      if (response.ok) {
-        results.push(file)
-      }
-    } catch (error) {
-      // Ignore errors for individual files
-    }
-  }
-
-  return results
-}
-
-// Function to check if common directories exist
-async function checkCommonDirectories(repo: Repository): Promise<string[]> {
-  const commonDirs = [
-    "src",
-    "app",
-    "lib",
-    "test",
-    "tests",
-    "docs",
-    "examples",
-    "scripts",
-    "public",
-    "assets",
-    "dist",
-    "build",
-  ]
-
-  const results: string[] = []
-
-  for (const dir of commonDirs) {
-    try {
-      const response = await fetch(`https://api.github.com/repos/${repo.full_name}/contents/${dir}`, {
-        headers: {
-          Accept: "application/vnd.github.v3+json",
-          "X-GitHub-Api-Version": "2022-11-28",
-        },
-      })
-
-      if (response.ok) {
-        results.push(`${dir}/`)
-      }
-    } catch (error) {
-      // Ignore errors for individual directories
-    }
-  }
-
-  return results
-}
-
+// Function to fetch repository contents with error handling for large directories
 export async function fetchRepoContents(repo: Repository): Promise<string[]> {
   try {
-    // Get top-level contents
-    const topLevelContents = await fetchTopLevelContents(repo)
+    // Get the root directory contents
+    const data = await githubApi.fetchRepoContents(repo.owner.login, repo.name)
 
-    // Get important files
-    const importantFiles = await fetchImportantFiles(repo)
+    // Extract file and directory names
+    const contents = Array.isArray(data) ? data.map((item: any) => item.path) : [data.path]
 
-    // Check common directories
-    const commonDirs = await checkCommonDirectories(repo)
-
-    // Combine all results
-    const allContents = [...new Set([...topLevelContents, ...importantFiles, ...commonDirs])]
-
-    if (allContents.length === 0) {
-      // If we couldn't fetch any contents, return some basic structure based on language
+    // If we couldn't get any contents, return default structure
+    if (contents.length === 0) {
       return getDefaultStructure(repo.language)
     }
 
-    return allContents
+    return contents
   } catch (error) {
     console.error("Error fetching repository contents:", error)
-    // Return default structure based on language if we can't fetch contents
+    // Fallback to a basic structure if we can't fetch contents
     return getDefaultStructure(repo.language)
   }
 }
@@ -235,38 +65,49 @@ function getDefaultStructure(language: string | null): string[] {
   }
 }
 
-// Function to fetch package.json content if it exists
+// Update the fetchPackageJson function to check if the file exists first
+
+// Find the fetchPackageJson function and update it
 async function fetchPackageJson(repo: Repository): Promise<any | null> {
   try {
-    const response = await fetch(`https://api.github.com/repos/${repo.full_name}/contents/package.json`, {
-      headers: {
-        Accept: "application/vnd.github.v3+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-      },
-    })
-
-    if (!response.ok) {
+    // Only attempt to fetch package.json for JavaScript/TypeScript repositories
+    if (!["JavaScript", "TypeScript", "javascript", "typescript"].includes(repo.language || "")) {
       return null
     }
 
-    const data = await response.json()
+    // Check if package.json exists before trying to fetch it
+    const exists = await githubApi.fileExists(repo.owner.login, repo.name, "package.json")
+    if (!exists) {
+      console.log(`No package.json found in ${repo.full_name}`)
+      return null
+    }
 
-    // GitHub API returns content as base64 encoded
-    const content = atob(data.content)
+    const content = await githubApi.fetchFileContent(repo.owner.login, repo.name, "package.json")
     return JSON.parse(content)
   } catch (error) {
     console.error("Error fetching package.json:", error)
-    return null
+    return null // Return null instead of throwing to prevent breaking the README generation
   }
 }
 
+// Update the generateRepoReadme function to handle the case when package.json doesn't exist
+
+// Find the generateRepoReadme function and update it
 export async function generateRepoReadme(repo: Repository) {
   try {
     // 1. Fetch repository contents
     const contents = await fetchRepoContents(repo)
 
-    // 2. Fetch package.json if it exists
-    const packageJson = await fetchPackageJson(repo)
+    // 2. Fetch package.json if it exists (and only for JS/TS repos)
+    let packageJson = null
+    if (["JavaScript", "TypeScript", "javascript", "typescript"].includes(repo.language || "")) {
+      try {
+        packageJson = await fetchPackageJson(repo)
+      } catch (error) {
+        console.log("Could not fetch package.json, continuing without it")
+        // Continue without package.json
+      }
+    }
 
     // 3. Analyze repository structure and metadata
     const analysis = await analyzeRepository(repo, contents, packageJson)

@@ -21,7 +21,12 @@ export function RepoExplorer() {
   }
 
   return (
-    <div>
+    <div className="space-y-6">
+      <div className="max-w-3xl mx-auto space-y-2">
+        <h2 className="text-3xl font-bold tracking-tight">Generate README Files</h2>
+        <p className="text-muted-foreground">Search for a GitHub repository to generate a README file.</p>
+      </div>
+
       <div className="max-w-3xl mx-auto">
         <RepoSearch
           setRepos={setRepos}
@@ -63,6 +68,6 @@ export function RepoExplorer() {
         </Tabs>
       )}
     </div>
-  );
+  )
 }
 

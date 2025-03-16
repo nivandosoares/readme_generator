@@ -1,5 +1,6 @@
 import { Github } from "lucide-react"
 import { ModeToggle } from "./mode-toggle"
+import { GitHubTokenInput } from "./github-token-input"
 
 export function Header() {
   return (
@@ -10,6 +11,7 @@ export function Header() {
           <h1 className="text-xl font-bold">README Generator</h1>
         </div>
         <div className="flex items-center gap-2">
+          <GitHubTokenInput />
           <ModeToggle />
         </div>
       </div>

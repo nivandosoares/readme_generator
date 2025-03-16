@@ -1,6 +1,6 @@
-import { Header } from "@/components/header";
-import { RepoExplorer } from "@/components/repo-explorer";
-import { ArrowRight } from "lucide-react"; // Import ArrowRight icon
+import { Header } from "@/components/header"
+import { RepoExplorer } from "@/components/repo-explorer"
+import { ArrowRight, Info } from "lucide-react" // Import ArrowRight and Info icons
 
 export default function Home() {
   return (
@@ -17,8 +17,16 @@ export default function Home() {
               Stop Procrastinating on READMEs
             </h1>
             <p className="mt-4 text-lg text-gray-600 dark:text-gray-300">
-              We know you'd rather code than write docs. Let us handle the boring part—generate a professional README in seconds.
+              We know you'd rather code than write docs. Let us handle the boring part—generate a professional README in
+              seconds.
             </p>
+
+            {/* GitHub Token Info */}
+            <div className="mt-4 flex items-center justify-center gap-2 text-sm text-blue-600 dark:text-blue-400">
+              <Info className="h-4 w-4" />
+              <p>✨ NEW! Add a GitHub token to increase API rate limits from 60 to 5,000 requests per hour.✨</p>
+            </div>
+
             <div className="mt-8">
               <a
                 href="#repo-explorer"
@@ -57,7 +65,10 @@ export default function Home() {
           </div>
 
           {/* Repo Explorer */}
-          <div id="repo-explorer" className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300">
+          <div
+            id="repo-explorer"
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300"
+          >
             <RepoExplorer />
           </div>
         </div>
@@ -80,5 +91,6 @@ export default function Home() {
         </div>
       </footer>
     </div>
-  );
+  )
 }
+

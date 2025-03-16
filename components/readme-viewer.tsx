@@ -1,65 +1,65 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Download, Copy, Check } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/components/ui/use-toast";
-import { marked } from "marked"; // Markdown-to-HTML library
-import DOMPurify from "dompurify"; // HTML sanitizer
-import "github-markdown-css"; // GitHub Markdown CSS
+import { useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Download, Copy, Check } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useToast } from "@/components/ui/use-toast"
+import { marked } from "marked" // Markdown-to-HTML library
+import DOMPurify from "dompurify" // HTML sanitizer
+import "github-markdown-css" // GitHub Markdown CSS
 
 // Enable GitHub-flavored Markdown
 marked.setOptions({
   gfm: true, // GitHub Flavored Markdown
   breaks: true, // Convert line breaks to <br>
-});
+})
 
 interface ReadmeViewerProps {
-  readme: string;
-  repoName: string;
-  repoOwner: string;
-  repoBranch: string;
+  readme: string
+  repoName: string
+  repoOwner: string
+  repoBranch: string
 }
 
 export function ReadmeViewer({ readme, repoName, repoOwner, repoBranch }: ReadmeViewerProps) {
-  const { toast } = useToast();
-  const [copied, setCopied] = useState(false);
+  const { toast } = useToast()
+  const [copied, setCopied] = useState(false)
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(readme);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    navigator.clipboard.writeText(readme)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
 
     toast({
       title: "Copied to clipboard",
       description: "README content has been copied to your clipboard",
-    });
-  };
+    })
+  }
 
   const handleDownload = () => {
-    const blob = new Blob([readme], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `README-${repoName}.md`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const blob = new Blob([readme], { type: "text/markdown" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `README-${repoName}.md`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
 
     toast({
       title: "Downloaded",
       description: `README-${repoName}.md has been downloaded`,
-    });
-  };
+    })
+  }
 
   // Process GitHub relative links
-  const processedReadme = processGitHubLinks(readme, repoOwner, repoName, repoBranch);
+  const processedReadme = processGitHubLinks(readme, repoOwner, repoName, repoBranch)
 
   // Convert Markdown to HTML using `marked` and sanitize it
-  const htmlContent = DOMPurify.sanitize(marked.parse(processedReadme));
+  const htmlContent = DOMPurify.sanitize(marked.parse(processedReadme))
 
   return (
     <Card>
@@ -103,18 +103,21 @@ export function ReadmeViewer({ readme, repoName, repoOwner, repoBranch }: Readme
         </Tabs>
       </CardContent>
     </Card>
-  );
+  )
 }
 
 // Helper to process GitHub-style relative links
 function processGitHubLinks(markdown: string, owner: string, repo: string, branch: string): string {
-  return markdown
-    // Handle image links that start with ./
-    .replace(/!\[([^\]]+)\]\(\.\/(.*?)\)/g, `![$1](https://github.com/${owner}/${repo}/raw/${branch}/$2)`)
-    // Handle relative links to files that start with ./
-    .replace(/\[([^\]]+)\]\(\.\/(.*?)\)/g, `[$1](https://github.com/${owner}/${repo}/blob/${branch}/$2)`)
-    // Handle anchor links (keep them as-is)
-    .replace(/\[([^\]]+)\]\(#(.*?)\)/g, `[$1](#$2)`)
-    // Handle absolute links (leave them unchanged)
-    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, `[$1]($2)`);
+  return (
+    markdown
+      // Handle image links that start with ./
+      .replace(/!\[([^\]]+)\]$$\.\/(.*?)$$/g, `![$1](https://github.com/${owner}/${repo}/raw/${branch}/$2)`)
+      // Handle relative links to files that start with ./
+      .replace(/\[([^\]]+)\]$$\.\/(.*?)$$/g, `[$1](https://github.com/${owner}/${repo}/blob/${branch}/$2)`)
+      // Handle anchor links (keep them as-is)
+      .replace(/\[([^\]]+)\]$$#(.*?)$$/g, `[$1](#$2)`)
+      // Handle absolute links (leave them unchanged)
+      .replace(/\[([^\]]+)\]$$(https?:\/\/[^\s)]+)$$/g, `[$1]($2)`)
+  )
 }
+
