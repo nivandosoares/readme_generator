@@ -24,7 +24,7 @@ export default function Home() {
             {/* GitHub Token Info */}
             <div className="mt-4 flex items-center justify-center gap-2 text-sm text-blue-600 dark:text-blue-400">
               <Info className="h-4 w-4" />
-              <p>✨ NEW! Add a GitHub token to increase API rate limits from 60 to 5,000 requests per hour.✨</p>
+              <p>Add a GitHub token to increase API rate limits from 60 to 5,000 requests per hour.</p>
             </div>
 
             <div className="mt-8">

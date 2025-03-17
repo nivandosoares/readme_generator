@@ -3,7 +3,6 @@ import "@testing-library/jest-dom"
 // Mock localStorage
 const localStorageMock = (() => {
   let store = {}
-
   return {
     getItem(key) {
       return store[key] || null
@@ -16,6 +15,12 @@ const localStorageMock = (() => {
     },
     clear() {
       store = {}
+    },
+    key(index) {
+      return Object.keys(store)[index] || null
+    },
+    get length() {
+      return Object.keys(store).length
     },
   }
 })()
@@ -56,4 +61,7 @@ Object.defineProperty(window, "ResizeObserver", {
   configurable: true,
   value: ResizeObserver,
 })
+
+// Mock atob for base64 decoding
+global.atob = jest.fn((str) => Buffer.from(str, "base64").toString("binary"))
 

@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { GitHubTokenInput } from "@/components/github-token-input"
 import { useToast } from "@/components/ui/use-toast"
 import { githubApi } from "@/lib/github-api"
+import { expect, describe, beforeEach, it, jest } from "@jest/globals"
 
 // Mock the useToast hook
 jest.mock("@/components/ui/use-toast", () => ({
@@ -37,8 +38,8 @@ describe("GitHubTokenInput", () => {
 
     expect(screen.getByRole("dialog")).toBeInTheDocument()
     expect(screen.getByText(/github personal access token/i)).toBeInTheDocument()
-    // Use getByText instead of getByLabelText to avoid the multiple elements issue
-    expect(screen.getByText(/personal access token/i)).toBeInTheDocument()
+    // Use a more specific selector to avoid the multiple elements issue
+    expect(screen.getByLabelText(/personal access token/i)).toBeInTheDocument()
   })
 
   it("saves the token when the save button is clicked", async () => {

@@ -1,6 +1,8 @@
 "use server"
 
-import type { Repository } from "./types"
+import { generateText } from "ai"
+import { openai } from "@ai-sdk/openai"
+import type { Repository, UserProfile, LanguageStats, UserAnalysis } from "./types"
 
 // Interface for repository analysis
 interface RepositoryAnalysis {
@@ -345,6 +347,299 @@ ${analysis.devDependencies.map((dep) => `- ${dep}`).join("\n")}
     console.error("Error generating README from template:", error)
     return generateFallbackReadme(analysis)
   }
+}
+
+// New function to analyze user repositories and generate a user profile README
+export async function analyzeUserRepositories(profile: UserProfile, repos: Repository[]): Promise<UserAnalysis> {
+  // Calculate language statistics
+  const languageStats: LanguageStats = {}
+  let totalStars = 0
+  let totalForks = 0
+
+  // Count topics
+  const topicsCount: Record<string, number> = {}
+
+  // Process repositories
+  repos.forEach((repo) => {
+    // Count stars and forks
+    totalStars += repo.stargazers_count
+    totalForks += repo.forks_count
+
+    // Count languages
+    if (repo.language) {
+      languageStats[repo.language] = (languageStats[repo.language] || 0) + 1
+    }
+
+    // Count topics
+    repo.topics.forEach((topic) => {
+      topicsCount[topic] = (topicsCount[topic] || 0) + 1
+    })
+  })
+
+  // Sort languages by count
+  const sortedLanguages = Object.entries(languageStats)
+    .sort((a, b) => b[1] - a[1])
+    .reduce((obj, [key, value]) => {
+      obj[key] = value
+      return obj
+    }, {} as LanguageStats)
+
+  // Get top topics (up to 10)
+  const topTopics = Object.entries(topicsCount)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([topic]) => topic)
+
+  // Get featured repositories (most stars, up to 5)
+  const featuredRepos = [...repos].sort((a, b) => b.stargazers_count - a.stargazers_count).slice(0, 5)
+
+  // Get recent activity (most recently updated, up to 5)
+  const recentActivity = [...repos]
+    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+    .slice(0, 5)
+
+  return {
+    username: profile.login,
+    name: profile.name,
+    bio: profile.bio,
+    location: profile.location,
+    company: profile.company,
+    blog: profile.blog,
+    twitter: profile.twitter_username,
+    email: profile.email,
+    followers: profile.followers,
+    following: profile.following,
+    totalStars,
+    totalForks,
+    totalRepos: profile.public_repos,
+    topLanguages: sortedLanguages,
+    topTopics,
+    featuredRepos,
+    recentActivity,
+  }
+}
+
+// New function to generate a user profile README using AI
+export async function generateUserReadme(profile: UserProfile, repos: Repository[]): Promise<string> {
+  // First, analyze the user's repositories
+  const analysis = await analyzeUserRepositories(profile, repos)
+
+  // Check if OpenAI API key is available from environment variables
+  const hasApiKey = process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.length > 0
+
+  // If no API key is available, use template-based generation immediately
+  if (!hasApiKey) {
+    console.log("No OpenAI API key available, using template-based generation")
+    return generateTemplateBasedUserReadme(analysis)
+  }
+
+  try {
+    // Try to use AI to generate a personalized README
+    const { text } = await generateText({
+      model: openai("gpt-4o"),
+      system: `You are a professional GitHub profile README generator specializing in creating engaging, visually appealing developer profiles.
+      
+      Your expertise includes:
+      - Creating modern, professional GitHub profile READMEs that follow current best practices
+      - Highlighting a developer's skills, projects, and contributions effectively
+      - Incorporating appropriate badges, stats visualizations, and formatting
+      - Maintaining a professional but personable tone that represents the developer well
+      - Organizing information in a logical, scannable structure
+      
+      Your task is to craft a README.md file that will serve as the developer's GitHub profile landing page.
+      Focus on creating content that:
+      1. Makes a strong first impression with a clear, engaging introduction
+      2. Highlights technical skills and specializations prominently
+      3. Showcases notable projects with concise descriptions
+      4. Includes appropriate contact information and social links
+      5. Uses markdown formatting effectively for visual appeal
+      
+      The README should be comprehensive yet concise, with proper section organization and visual hierarchy.`,
+      prompt: `Create a professional GitHub profile README for a developer with the following information:
+
+# Developer Profile
+- Username: ${analysis.username}
+- Full Name: ${analysis.name || analysis.username}
+- Bio: ${analysis.bio || "No bio provided"}
+- Location: ${analysis.location || "Not specified"}
+- Company/Organization: ${analysis.company || "Not specified"}
+- Personal Website: ${analysis.blog || "Not specified"}
+- Twitter: ${analysis.twitter ? `@${analysis.twitter}` : "Not specified"}
+- Email: ${analysis.email || "Not specified"}
+
+# GitHub Statistics
+- Followers: ${analysis.followers}
+- Following: ${analysis.following}
+- Total Stars Earned: ${analysis.totalStars}
+- Total Forks: ${analysis.totalForks}
+- Public Repositories: ${analysis.totalRepos}
+
+# Technical Profile
+- Primary Languages: ${Object.keys(analysis.topLanguages).slice(0, 5).join(", ")}
+- Areas of Interest/Expertise: ${analysis.topTopics.join(", ")}
+
+# Notable Repositories
+${analysis.featuredRepos.map((repo) => `- ${repo.name}: ${repo.description || "No description"} (Stars: ${repo.stargazers_count}, Language: ${repo.language || "Not specified"})`).join("\n")}
+
+# Recent Activity
+${analysis.recentActivity.map((repo) => `- Updated "${repo.name}" on ${new Date(repo.updated_at).toLocaleDateString()}`).join("\n")}
+
+Create a comprehensive, well-structured GitHub profile README that effectively showcases this developer's work and expertise. Include appropriate sections, badges, and formatting to create a visually appealing profile page.`,
+    })
+
+    return text
+  } catch (error) {
+    // Check if it's an API quota error
+    const errorMessage = error instanceof Error ? error.message : "Unknown error"
+    if (errorMessage.includes("quota") || errorMessage.includes("rate limit") || errorMessage.includes("billing")) {
+      console.log("OpenAI API quota exceeded, using template-based generation")
+    } else {
+      console.error("AI generation failed with error:", errorMessage)
+    }
+
+    // Always fall back to template-based generation on any error
+    return generateTemplateBasedUserReadme(analysis)
+  }
+}
+
+// Template-based user README generation as a fallback when AI is unavailable
+export function generateTemplateBasedUserReadme(analysis: UserAnalysis): string {
+  // Get language badges
+  const languageBadges = Object.keys(analysis.topLanguages)
+    .slice(0, 5)
+    .map(
+      (lang) =>
+        `![${lang}](https://img.shields.io/badge/-${encodeURIComponent(lang)}-${getColorForLanguage(lang)}?style=flat-square&logo=${lang.toLowerCase()})`,
+    )
+    .join(" ")
+
+  // Format social links
+  const socialLinks = []
+  if (analysis.blog) {
+    socialLinks.push(
+      `[<img src="https://img.shields.io/badge/-Website-0A0A0A?style=flat-square&logo=googlechrome&logoColor=white" />](${analysis.blog})`,
+    )
+  }
+  if (analysis.twitter) {
+    socialLinks.push(
+      `[<img src="https://img.shields.io/badge/-Twitter-1DA1F2?style=flat-square&logo=twitter&logoColor=white" />](https://twitter.com/${analysis.twitter})`,
+    )
+  }
+  if (analysis.email) {
+    socialLinks.push(
+      `[<img src="https://img.shields.io/badge/-Email-D14836?style=flat-square&logo=gmail&logoColor=white" />](mailto:${analysis.email})`,
+    )
+  }
+
+  return `# Hi there 👋, I'm ${analysis.name || analysis.username}
+
+${analysis.bio || ""}
+
+## About Me
+
+${analysis.location ? `📍 **Location**: ${analysis.location}  \n` : ""}
+${analysis.company ? `🏢 **Organization**: ${analysis.company}  \n` : ""}
+${socialLinks.length > 0 ? `### Connect with me:\n${socialLinks.join(" ")}\n` : ""}
+
+## 🔧 Technologies & Skills
+
+${languageBadges}
+
+${analysis.topTopics.length > 0 ? `### Areas of Interest\n${analysis.topTopics.map((topic) => `- ${topic}`).join("\n")}\n` : ""}
+
+## 📊 GitHub Stats
+
+- **Repositories**: ${analysis.totalRepos}
+- **Stars Earned**: ${analysis.totalStars}
+- **Followers**: ${analysis.followers}
+
+## 🏆 Featured Projects
+
+${analysis.featuredRepos
+  .map(
+    (repo) =>
+      `### [${repo.name}](${repo.html_url})
+${repo.description ? `> ${repo.description}` : ""}
+${repo.language ? `**Language**: ${repo.language}` : ""} ⭐ ${repo.stargazers_count} stars
+`,
+  )
+  .join("\n")}
+
+## 📝 Recent Activity
+
+${analysis.recentActivity.map((repo) => `- Updated [${repo.name}](${repo.html_url}) on ${new Date(repo.updated_at).toLocaleDateString()}`).join("\n")}
+
+---
+
+<p align="center">
+  <img src="https://komarev.com/ghpvc/?username=${analysis.username}" alt="Profile views" />
+</p>
+
+*This profile README was generated with [GitHub README Generator](https://github.com/readme-generator)*
+`
+}
+
+// Helper function to get a color for a language badge
+function getColorForLanguage(language: string): string {
+  const colorMap: Record<string, string> = {
+    JavaScript: "F7DF1E",
+    TypeScript: "3178C6",
+    Python: "3776AB",
+    Java: "007396",
+    "C#": "239120",
+    "C++": "00599C",
+    PHP: "777BB4",
+    Ruby: "CC342D",
+    Go: "00ADD8",
+    Rust: "000000",
+    Swift: "FA7343",
+    Kotlin: "0095D5",
+    Dart: "0175C2",
+    HTML: "E34F26",
+    CSS: "1572B6",
+    Shell: "4EAA25",
+  }
+
+  return colorMap[language] || "555555"
+}
+
+// Fallback README generator for user profiles in case the template approach fails
+function generateFallbackUserReadme(profile: UserProfile, repos: Repository[]): string {
+  const topRepos = [...repos].sort((a, b) => b.stargazers_count - a.stargazers_count).slice(0, 5)
+
+  const languages = new Set<string>()
+  repos.forEach((repo) => {
+    if (repo.language) languages.add(repo.language)
+  })
+
+  return `# Hi there 👋, I'm ${profile.name || profile.login}
+
+${profile.bio || ""}
+
+## About Me
+${profile.location ? `- 📍 Location: ${profile.location}` : ""}
+${profile.company ? `- 🏢 Company: ${profile.company}` : ""}
+${profile.blog ? `- 🌐 Website: [${profile.blog}](${profile.blog})` : ""}
+${profile.twitter_username ? `- 🐦 Twitter: [@${profile.twitter_username}](https://twitter.com/${profile.twitter_username})` : ""}
+${profile.email ? `- 📫 Email: ${profile.email}` : ""}
+
+## GitHub Stats
+- 👥 ${profile.followers} followers · Following ${profile.following} people
+- 🔭 ${profile.public_repos} public repositories
+- ⭐ ${repos.reduce((sum, repo) => sum + repo.stargazers_count, 0)} total stars earned
+
+## Languages
+${Array.from(languages)
+  .map((lang) => `- ${lang}`)
+  .join("\n")}
+
+## Top Repositories
+${topRepos.map((repo) => `- [${repo.name}](${repo.html_url}) - ${repo.description || "No description"} (⭐ ${repo.stargazers_count})`).join("\n")}
+
+---
+
+Last updated: ${new Date().toISOString().split("T")[0]}
+`
 }
 
 // Fallback README generator in case the template approach fails
