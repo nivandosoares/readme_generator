@@ -38,32 +38,34 @@ export async function fetchRepoByUrl(url: string): Promise<Repository | null> {
 }
 
 // Helper function to parse GitHub URLs
-export function parseGitHubUrl(url: string): { owner: string | null; repo: string | null } {
+export async function parseGitHubUrl(url: string): Promise<{ owner: string | null; repo: string | null }> {
   try {
-    const urlObj = new URL(url)
+    const urlObj = new URL(url);
 
     // Check if it's a GitHub URL
     if (!urlObj.hostname.includes("github.com")) {
-      return { owner: null, repo: null }
+      console.warn("Not a GitHub URL:", url);
+      return { owner: null, repo: null };
     }
 
     // Extract path segments
-    const pathSegments = urlObj.pathname.split("/").filter(Boolean)
+    const pathSegments = urlObj.pathname.split("/").filter(Boolean);
 
     // GitHub repository URLs have the format: github.com/:owner/:repo
     if (pathSegments.length >= 2) {
       return {
         owner: pathSegments[0],
         repo: pathSegments[1],
-      }
+      };
     }
 
-    return { owner: null, repo: null }
+    console.warn("Invalid GitHub repository URL format:", url);
+    return { owner: null, repo: null };
   } catch (error) {
-    return { owner: null, repo: null }
+    console.error("Error parsing GitHub URL:", error);
+    return { owner: null, repo: null };
   }
 }
-
 // Function to fetch repository contents with error handling for large directories
 export async function fetchRepoContents(repo: Repository): Promise<string[]> {
   try {

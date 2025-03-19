@@ -16,19 +16,40 @@ export default function Home() {
             <h1 className="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400">
               Stop Procrastinating on READMEs
             </h1>
+            <br />
             <p className="mt-4 text-lg text-gray-600 dark:text-gray-300">
               We know you'd rather code than write docs. Let us handle the boring part—generate a professional README in
               seconds.
             </p>
 
-            {/* GitHub Token Info */}
-            <div className="mt-4 flex items-center justify-center gap-2 text-sm text-blue-600 dark:text-blue-400">
-              <Info className="h-4 w-4" />
-              <p>Add a GitHub token to increase API rate limits from 60 to 5,000 requests per hour.</p>
-            </div>
-            <div className="mt-4 flex items-center justify-center gap-2 text-sm text-blue-600 dark:text-blue-400">
-            </div>
-
+            {/* Features */}
+            <p className="mt-8 text-lg text-gray-600 dark:text-gray-300">
+              <span className="font-semibold text-blue-600 dark:text-blue-400">New Features on V1.2.0:</span>
+            </p>
+<div className="mt-4 flex items-start justify-center gap-2 text-sm text-blue-600 dark:text-blue-400">
+  <Info className="h-4 w-4 mt-1" /> {/* Add mt-1 for minor vertical alignment adjustment */}
+  <p>
+    Add a <span className="font-semibold text-blue-700 dark:text-blue-300">GitHub token</span> to increase API rate limits from <span className="font-semibold text-blue-700 dark:text-blue-300">60</span> to <span className="font-semibold text-blue-700 dark:text-blue-300">5,000</span> requests per hour.
+  </p>
+</div>
+<div className="mt-4 flex items-start justify-center gap-2 text-sm text-blue-600 dark:text-blue-400">
+  <Info className="h-4 w-4 mt-1" />
+  <p>
+    <span className="font-semibold text-blue-700 dark:text-blue-300">Repository insights</span> to track contributions, pull requests, and issue activity over time, helping you understand project growth and collaboration trends.
+  </p>
+</div>
+<div className="mt-4 flex items-start justify-center gap-2 text-sm text-blue-600 dark:text-blue-400">
+  <Info className="h-4 w-4 mt-1" />
+  <p>
+    <span className="font-semibold text-blue-700 dark:text-blue-300">AI-powered suggestions</span> to optimize your repository's tags and descriptions, making it easier for others to discover and contribute to your project.
+  </p>
+</div>
+<div className="mt-4 flex items-start justify-center gap-2 text-sm text-blue-600 dark:text-blue-400">
+  <Info className="h-4 w-4 mt-1" />
+  <p>
+    <span className="font-semibold text-blue-700 dark:text-blue-300">Generate a readme for your profile</span> to help you understand your project's overview, including career focus.
+  </p>
+</div>
             <div className="mt-8">
               <a
                 href="#repo-explorer"
