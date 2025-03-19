@@ -5,7 +5,7 @@ import type React from "react"
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Download, Copy, Check, Loader2, User } from "lucide-react"
+import { Download, Copy, Check, Loader2, User, LineChart } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/components/ui/use-toast"
 import { marked } from "marked" // Markdown-to-HTML library
@@ -14,8 +14,10 @@ import "github-markdown-css" // GitHub Markdown CSS
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle, Info } from "lucide-react"
+import { AlertCircle } from "lucide-react"
 import { generateUserProfileReadme } from "@/lib/actions"
+import { ProfileInsights } from "./profile-insights"
+import type { UserProfile, Repository } from "@/lib/types"
 
 // Enable GitHub-flavored Markdown
 marked.setOptions({
@@ -30,7 +32,9 @@ export function UserProfileViewer() {
   const [error, setError] = useState<string | null>(null)
   const [readme, setReadme] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
-  const [isAIFallback, setIsAIFallback] = useState(false)
+  const [activeTab, setActiveTab] = useState("readme")
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+  const [userRepos, setUserRepos] = useState<Repository[]>([])
 
   const handleGenerateReadme = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -43,27 +47,30 @@ export function UserProfileViewer() {
     setLoading(true)
     setError(null)
     setReadme(null)
-    setIsAIFallback(false)
+    setUserProfile(null)
+    setUserRepos([])
 
     try {
-      const { readme, usedFallback } = await generateUserProfileReadme(username)
-      setReadme(readme)
-      setIsAIFallback(usedFallback || false)
+      const result = await generateUserProfileReadme(username, true) // Set to always include insights
+
+      if (!result || !result.readme) {
+        throw new Error("Failed to generate README")
+      }
+
+      setReadme(result.readme)
+      setUserProfile(result.profile)
+      setUserRepos(result.repos || [])
 
       toast({
         title: "README Generated",
-        description: usedFallback
-          ? "Generated profile README using template (AI service unavailable)"
-          : `Successfully generated profile README for ${username}`,
+        description: `Successfully generated profile README for ${username}`,
       })
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "An error occurred"
 
       // Format the error message to be more user-friendly
       let formattedError = errorMessage
-      if (errorMessage.includes("quota") || errorMessage.includes("rate limit") || errorMessage.includes("billing")) {
-        formattedError = "AI service is currently unavailable. Please try again later or add your own OpenAI API key."
-      } else if (errorMessage.includes("not found")) {
+      if (errorMessage.includes("not found")) {
         formattedError = `GitHub user "${username}" not found. Please check the username and try again.`
       } else if (errorMessage.includes("API error")) {
         formattedError = "GitHub API error. Please try again later."
@@ -113,21 +120,23 @@ export function UserProfileViewer() {
     })
   }
 
-  // Convert Markdown to HTML using `marked` and sanitize it
-  const htmlContent = readme ? DOMPurify.sanitize(marked.parse(readme)) : ""
+  // Create HTML content from readme
+  const htmlContent = readme ? DOMPurify.sanitize(marked.parse(readme || "")) : ""
 
   return (
     <div className="space-y-6">
       <div className="max-w-3xl mx-auto space-y-2">
         <h2 className="text-2xl font-bold tracking-tight">Generate GitHub Profile README</h2>
-        <p className="text-muted-foreground">Create a comprehensive README for your GitHub profile page.</p>
+        <p className="text-muted-foreground">
+          Create a comprehensive, professional README for your GitHub profile page with AI-powered insights.
+        </p>
       </div>
 
       <Card className="max-w-3xl mx-auto">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />
-            Profile README Generator
+            Professional Profile README Generator
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -149,7 +158,7 @@ export function UserProfileViewer() {
                       Generating...
                     </>
                   ) : (
-                    <>Generate README</>
+                    <>Generate Professional README</>
                   )}
                 </Button>
               </div>
@@ -164,55 +173,62 @@ export function UserProfileViewer() {
             </Alert>
           )}
 
-          {isAIFallback && readme && (
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertTitle>AI Service Unavailable</AlertTitle>
-              <AlertDescription>
-                The AI-powered generation is currently unavailable. This README was created using a template-based
-                approach instead.
-              </AlertDescription>
-            </Alert>
-          )}
-
           {readme && (
-            <div className="space-y-4">
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" size="sm" onClick={handleCopy}>
-                  {copied ? (
-                    <>
-                      <Check className="mr-2 h-4 w-4" />
-                      Copied
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="mr-2 h-4 w-4" />
-                      Copy
-                    </>
-                  )}
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleDownload}>
-                  <Download className="mr-2 h-4 w-4" />
-                  Download
-                </Button>
-              </div>
-
-              <Tabs defaultValue="preview">
-                <TabsList className="mb-4">
-                  <TabsTrigger value="preview">Preview</TabsTrigger>
-                  <TabsTrigger value="raw">Raw Markdown</TabsTrigger>
+            <>
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList>
+                  <TabsTrigger value="readme">Generated README</TabsTrigger>
+                  <TabsTrigger value="insights">
+                    <LineChart className="mr-2 h-4 w-4" />
+                    Professional Profile Analysis
+                  </TabsTrigger>
                 </TabsList>
-                <TabsContent value="preview">
-                  <div
-                    className="markdown-body prose dark:prose-invert max-w-none border rounded-md p-4 bg-card"
-                    dangerouslySetInnerHTML={{ __html: htmlContent }}
-                  />
+
+                <TabsContent value="readme" className="mt-4 space-y-4">
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" size="sm" onClick={handleCopy}>
+                      {copied ? (
+                        <>
+                          <Check className="mr-2 h-4 w-4" />
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="mr-2 h-4 w-4" />
+                          Copy
+                        </>
+                      )}
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleDownload}>
+                      <Download className="mr-2 h-4 w-4" />
+                      Download
+                    </Button>
+                  </div>
+
+                  <Tabs defaultValue="preview">
+                    <TabsList className="mb-4">
+                      <TabsTrigger value="preview">Preview</TabsTrigger>
+                      <TabsTrigger value="raw">Raw Markdown</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="preview">
+                      <div
+                        className="markdown-body prose dark:prose-invert max-w-none border rounded-md p-4 bg-card"
+                        dangerouslySetInnerHTML={{ __html: htmlContent }}
+                      />
+                    </TabsContent>
+                    <TabsContent value="raw">
+                      <pre className="border rounded-md p-4 overflow-auto bg-muted text-sm">{readme}</pre>
+                    </TabsContent>
+                  </Tabs>
                 </TabsContent>
-                <TabsContent value="raw">
-                  <pre className="border rounded-md p-4 overflow-auto bg-muted text-sm">{readme}</pre>
+
+                <TabsContent value="insights" className="mt-4">
+                  <div className="space-y-4">
+                    <ProfileInsights profile={userProfile} repos={userRepos} />
+                  </div>
                 </TabsContent>
               </Tabs>
-            </div>
+            </>
           )}
         </CardContent>
       </Card>

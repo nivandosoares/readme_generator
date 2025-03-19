@@ -1,6 +1,6 @@
 {
   "name": "readme-generator",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -24,7 +24,7 @@
     "@radix-ui/react-menubar": "^1.1.4",
     "@radix-ui/react-navigation-menu": "^1.2.3",
     "@radix-ui/react-popover": "^1.1.4",
-    "@radix-ui/react-progress": "^1.1.1",
+    "@radix-ui/react-progress": "latest",
     "@radix-ui/react-radio-group": "^1.2.2",
     "@radix-ui/react-scroll-area": "^1.2.2",
     "@radix-ui/react-select": "^2.1.4",
@@ -65,9 +65,7 @@
     "github-markdown-css": "latest",
     "@jest/globals": "latest",
     "@testing-library/react": "latest",
-    "@testing-library/jest-dom": "latest",
-    "ai": "latest",
-    "@ai-sdk/openai": "latest"
+    "@testing-library/jest-dom": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

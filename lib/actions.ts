@@ -1,8 +1,15 @@
 "use server"
 
 import type { Repository } from "./types"
-import { analyzeRepository, generateReadmeFromAnalysis, generateUserReadme } from "./llm"
+import {
+  analyzeRepository,
+  analyzeUserRepositories,
+  createUserProfileReadme,
+  generateProfileInsights,
+  generateReadmeFromAnalysis,
+} from "./repo-analysis"
 import { githubApi } from "./github-api"
+import { learnFromRepository } from "./readme-learning"
 
 // Update the fetchUserRepos function
 export async function fetchUserRepos(username: string): Promise<Repository[]> {
@@ -131,9 +138,17 @@ async function fetchPackageJson(repo: Repository): Promise<any | null> {
   }
 }
 
-// Find the generateRepoReadme function and update it
+// Update the generateRepoReadme function to use our learning-based approach
 export async function generateRepoReadme(repo: Repository) {
   try {
+    // Validate repository data
+    if (!repo || !repo.name) {
+      throw new Error("Invalid repository data")
+    }
+
+    // Learn from this repository if it has a README
+    await learnFromRepository(repo)
+
     // 1. Fetch repository contents
     const contents = await fetchRepoContents(repo)
 
@@ -148,13 +163,13 @@ export async function generateRepoReadme(repo: Repository) {
       }
     }
 
-    // 3. Analyze repository structure and metadata
+    // 3. Perform comprehensive repository analysis
     const analysis = await analyzeRepository(repo, contents, packageJson)
 
-    // 4. Generate README using the analysis
+    // 4. Generate README using the enhanced analysis
     const readme = await generateReadmeFromAnalysis(analysis)
 
-    return { success: true, readme }
+    return { success: true, readme, analysis: analysis }
   } catch (error) {
     console.error("Error generating README:", error)
     throw error
@@ -162,7 +177,7 @@ export async function generateRepoReadme(repo: Repository) {
 }
 
 // Add a function to generate a user profile README
-export async function generateUserProfileReadme(username: string) {
+export async function generateUserProfileReadme(username: string, includeInsights = true) {
   try {
     // 1. Fetch user profile information
     const userProfile = await githubApi.fetchUserProfile(username)
@@ -170,15 +185,48 @@ export async function generateUserProfileReadme(username: string) {
     // 2. Fetch user repositories
     const repos = await githubApi.fetchUserRepos(username, 100) // Fetch up to 100 repos
 
-    // 3. Generate README (this will automatically use template if AI fails)
-    const readme = await generateUserReadme(userProfile, repos)
+    // Learn from each repository
+    for (const repo of repos) {
+      await learnFromRepository(repo)
+    }
 
-    // Check if the readme was generated using the template (simple heuristic)
-    const usedFallback =
-      readme.includes("*This profile README was generated with [GitHub README Generator]") ||
-      !process.env.OPENAI_API_KEY
+    // 3. Analyze user repositories
+    const analysis = analyzeUserRepositories(userProfile, repos)
 
-    return { success: true, readme, usedFallback }
+    // 4. Generate README using enhanced processing
+    let readme = createUserProfileReadme(analysis)
+
+    // 5. Always include insights (changed default to true)
+    if (includeInsights) {
+      try {
+        const insights = generateProfileInsights(userProfile, repos)
+
+        // Extract key sections from insights for inclusion
+        const insightsSections = insights
+          .split("\n\n")
+          .filter(
+            (section) =>
+              section.includes("Technical Profile") ||
+              section.includes("Career Insights") ||
+              section.includes("Contribution Analysis") ||
+              section.includes("Professional Recommendations"),
+          )
+
+        // Insert insights as a dedicated section
+        const readmeParts = readme.split("## 📝 Recent Activity")
+        readme =
+          readmeParts[0] +
+          "\n\n## 🔍 Professional Profile Analysis\n\n" +
+          insightsSections.join("\n\n") +
+          "\n\n## 📝 Recent Activity" +
+          readmeParts[1]
+      } catch (error) {
+        console.error("Error generating insights:", error)
+        // Continue with base README if insights generation fails
+      }
+    }
+
+    return { success: true, readme, profile: userProfile, repos }
   } catch (error) {
     console.error("Error generating user profile README:", error)
     throw error

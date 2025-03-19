@@ -6,12 +6,9 @@ import { RepoList } from "./repo-list"
 import { ReadmeViewer } from "./readme-viewer"
 import { UserProfileViewer } from "./user-profile-viewer"
 import { AIInsights } from "./ai-insights"
-import { ApiKeySetup } from "./api-key-setup"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { Repository } from "@/lib/types"
-import { FileText, User, Sparkles } from "lucide-react"
-import { env } from "@/lib/env"
-import { ApiQuotaNotice } from "./api-quota-notice"
+import { FileText, User, LineChart } from "lucide-react"
 
 export function RepoExplorer() {
   const [repos, setRepos] = useState<Repository[]>([])
@@ -37,14 +34,6 @@ export function RepoExplorer() {
         <h2 className="text-3xl font-bold tracking-tight">GitHub Tools</h2>
         <p className="text-muted-foreground">Generate READMEs and get insights for GitHub repositories and profiles.</p>
       </div>
-
-      {/* Add the API quota notice */}
-      <div className="max-w-3xl mx-auto">
-        <ApiQuotaNotice />
-      </div>
-
-      {/* Show API key setup if OpenAI key is not available */}
-      {!env.hasOpenAIKey() && <ApiKeySetup />}
 
       <Tabs value={mainTab} onValueChange={handleMainTabChange} className="max-w-3xl mx-auto">
         <TabsList>
@@ -76,8 +65,8 @@ export function RepoExplorer() {
                 {readme && <TabsTrigger value="readme">Generated README</TabsTrigger>}
                 {selectedRepo && (
                   <TabsTrigger value="ai-insights">
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    AI Insights
+                    <LineChart className="mr-2 h-4 w-4" />
+                    Repository Insights
                   </TabsTrigger>
                 )}
               </TabsList>
