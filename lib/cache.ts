@@ -65,9 +65,18 @@ class Cache {
 
     // Clear localStorage cache entries
     try {
-      Object.keys(localStorage)
-        .filter((key) => key.startsWith("github_cache_"))
-        .forEach((key) => localStorage.removeItem(key))
+      const keysToRemove: string[] = []
+
+      // Find all keys that start with github_cache_
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && key.startsWith("github_cache_")) {
+          keysToRemove.push(key)
+        }
+      }
+
+      // Remove each key
+      keysToRemove.forEach((key) => localStorage.removeItem(key))
     } catch (error) {
       // Ignore localStorage errors
     }

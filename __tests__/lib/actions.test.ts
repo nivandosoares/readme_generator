@@ -9,6 +9,7 @@ jest.mock("@/lib/github-api", () => ({
     fetchUserRepos: jest.fn(),
     fetchRepoContents: jest.fn(),
     fetchFileContent: jest.fn(),
+    fileExists: jest.fn(),
   },
 }))
 
@@ -29,7 +30,9 @@ describe("GitHub Actions", () => {
         { id: 1, name: "repo1" },
         { id: 2, name: "repo2" },
       ]
-      ;(githubApi.fetchUserRepos as jest.Mock).mockResolvedValue(mockRepos)
+
+      // Use jest.fn() to create a proper mock function
+      githubApi.fetchUserRepos = jest.fn().mockResolvedValue(mockRepos)
 
       const result = await fetchUserRepos("testuser")
 
@@ -39,7 +42,9 @@ describe("GitHub Actions", () => {
 
     it("should propagate errors", async () => {
       const error = new Error("API error")
-      ;(githubApi.fetchUserRepos as jest.Mock).mockRejectedValue(error)
+
+      // Use jest.fn() to create a proper mock function
+      githubApi.fetchUserRepos = jest.fn().mockRejectedValue(error)
 
       await expect(fetchUserRepos("testuser")).rejects.toThrow("API error")
     })
@@ -55,7 +60,9 @@ describe("GitHub Actions", () => {
       } as any
 
       const mockContents = [{ path: "file1.js" }, { path: "file2.js" }]
-      ;(githubApi.fetchRepoContents as jest.Mock).mockResolvedValue(mockContents)
+
+      // Use jest.fn() to create a proper mock function
+      githubApi.fetchRepoContents = jest.fn().mockResolvedValue(mockContents)
 
       const result = await fetchRepoContents(mockRepo)
 
@@ -70,7 +77,9 @@ describe("GitHub Actions", () => {
         owner: { login: "owner" },
         language: "JavaScript",
       } as any
-      ;(githubApi.fetchRepoContents as jest.Mock).mockRejectedValue(new Error("API error"))
+
+      // Use jest.fn() to create a proper mock function
+      githubApi.fetchRepoContents = jest.fn().mockRejectedValue(new Error("API error"))
 
       const result = await fetchRepoContents(mockRepo)
 
@@ -94,10 +103,18 @@ describe("GitHub Actions", () => {
       const mockPackageJson = { dependencies: { react: "^18.0.0" } }
       const mockAnalysis = { name: "repo1", language: "JavaScript" }
       const mockReadme = "# repo1\n\nA JavaScript project"
-      ;(githubApi.fetchRepoContents as jest.Mock).mockResolvedValue(mockContents.map((path) => ({ path })))
-      ;(githubApi.fetchFileContent as jest.Mock).mockResolvedValue(JSON.stringify(mockPackageJson))
-      ;(analyzeRepository as jest.Mock).mockResolvedValue(mockAnalysis)
-      ;(generateReadmeFromAnalysis as jest.Mock).mockResolvedValue(mockReadme)
+
+      // Use jest.fn() to create proper mock functions
+      githubApi.fetchRepoContents = jest.fn().mockResolvedValue(mockContents.map((path) => ({ path })))
+      githubApi.fetchFileContent = jest.fn().mockResolvedValue(JSON.stringify(mockPackageJson))
+      githubApi.fileExists = jest
+        .fn()
+        .mockResolvedValue(true)(
+          // Use the imported mock functions
+          analyzeRepository as jest.Mock,
+        )
+        .mockResolvedValue(mockAnalysis)(generateReadmeFromAnalysis as jest.Mock)
+        .mockResolvedValue(mockReadme)
 
       const result = await generateRepoReadme(mockRepo)
 
@@ -114,7 +131,9 @@ describe("GitHub Actions", () => {
         language: "JavaScript",
         full_name: "owner/repo1",
       } as any
-      ;(githubApi.fetchRepoContents as jest.Mock).mockRejectedValue(new Error("API error"))
+
+      // Use jest.fn() to create a proper mock function
+      githubApi.fetchRepoContents = jest.fn().mockRejectedValue(new Error("API error"))
 
       await expect(generateRepoReadme(mockRepo)).rejects.toThrow()
     })

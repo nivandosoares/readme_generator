@@ -1,5 +1,5 @@
 import { cache } from "./cache"
-import type { Repository } from "./types"
+import type { Repository, UserProfile } from "./types"
 
 // Rate limiting configuration
 const RATE_LIMIT = 10 // requests per minute
@@ -94,9 +94,9 @@ export class GitHubApiClient {
   }
 
   // Fetch user repositories with caching
-  async fetchUserRepos(username: string): Promise<Repository[]> {
+  async fetchUserRepos(username: string, perPage = 10): Promise<Repository[]> {
     // Check cache first
-    const cacheKey = `user_repos_${username}`
+    const cacheKey = `user_repos_${username}_${perPage}`
     const cachedData = cache.get<Repository[]>(cacheKey)
     if (cachedData) {
       return cachedData
@@ -109,9 +109,12 @@ export class GitHubApiClient {
     }
 
     try {
-      const response = await this.fetchWithRetry(`${this.baseUrl}/users/${username}/repos?sort=updated&per_page=10`, {
-        headers: this.getHeaders(),
-      })
+      const response = await this.fetchWithRetry(
+        `${this.baseUrl}/users/${username}/repos?sort=updated&per_page=${perPage}`,
+        {
+          headers: this.getHeaders(),
+        },
+      )
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -137,6 +140,98 @@ export class GitHubApiClient {
       return data
     } catch (error) {
       console.error("Error fetching repositories:", error)
+      throw error
+    }
+  }
+
+  // Fetch a specific repository
+  async fetchRepo(owner: string, repo: string): Promise<Repository> {
+    // Check cache first
+    const cacheKey = `repo_${owner}_${repo}`
+    const cachedData = cache.get<Repository>(cacheKey)
+    if (cachedData) {
+      return cachedData
+    }
+
+    // Apply rate limiting
+    const identifier = `repo_${owner}_${repo}`
+    if (!this.checkRateLimit(identifier)) {
+      throw new Error("Rate limit exceeded. Please try again later.")
+    }
+
+    try {
+      const response = await this.fetchWithRetry(`${this.baseUrl}/repos/${owner}/${repo}`, {
+        headers: this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error("Repository not found")
+        }
+        if (response.status === 403) {
+          const rateLimitRemaining = response.headers.get("X-RateLimit-Remaining")
+          if (rateLimitRemaining === "0") {
+            throw new Error("GitHub API rate limit exceeded")
+          }
+          throw new Error("GitHub API access forbidden")
+        }
+        throw new Error(`GitHub API error: ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      // Cache the result for 5 minutes
+      cache.set(cacheKey, data, 300)
+
+      return data
+    } catch (error) {
+      console.error(`Error fetching repository ${owner}/${repo}:`, error)
+      throw error
+    }
+  }
+
+  // Fetch user profile information
+  async fetchUserProfile(username: string): Promise<UserProfile> {
+    // Check cache first
+    const cacheKey = `user_profile_${username}`
+    const cachedData = cache.get<UserProfile>(cacheKey)
+    if (cachedData) {
+      return cachedData
+    }
+
+    // Apply rate limiting
+    const identifier = `user_${username}`
+    if (!this.checkRateLimit(identifier)) {
+      throw new Error("Rate limit exceeded. Please try again later.")
+    }
+
+    try {
+      const response = await this.fetchWithRetry(`${this.baseUrl}/users/${username}`, {
+        headers: this.getHeaders(),
+      })
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error("GitHub user not found")
+        }
+        if (response.status === 403) {
+          const rateLimitRemaining = response.headers.get("X-RateLimit-Remaining")
+          if (rateLimitRemaining === "0") {
+            throw new Error("GitHub API rate limit exceeded")
+          }
+          throw new Error("GitHub API access forbidden")
+        }
+        throw new Error(`GitHub API error: ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      // Cache the result for 10 minutes
+      cache.set(cacheKey, data, 600)
+
+      return data
+    } catch (error) {
+      console.error(`Error fetching user profile for ${username}:`, error)
       throw error
     }
   }
